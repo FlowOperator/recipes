@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "worker",
+	"name": "recipe-ingestion-worker",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-07-04",
 	"observability": {
@@ -13,7 +13,11 @@
 	"upload_source_maps": true,
 	"compatibility_flags": [
 		"nodejs_compat"
-	]
+	],
+	"vars": {
+		"SUPABASE_URL": "https://qggaxsiqhrfmnjznkvbq.supabase.co",
+		"SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnZ2F4c2lxaHJmbW5qem5rdmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzQ2OTAsImV4cCI6MjA4OTUxMDY5MH0.pFxI9wFhEvgNqOkzfcMgBiGfGeLoVnyjyD72mlCynwo"
+	}
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
