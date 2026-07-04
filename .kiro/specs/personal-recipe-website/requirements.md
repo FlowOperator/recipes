@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The Personal Recipe Website is a single-user web application for collecting, organizing, and cooking from recipes. It replaces a manual workflow of browsing for inspiration and copying recipe details into a notes app. The application lets the user add recipes by pasting a link, uploading a screenshot, or entering details manually; enriches each recipe with personal metadata (rating, cost, cook notes, nutrition, labels); supports browsing and filtering that collection; and generates shopping lists that exclude common pantry staples and export to Apple Notes.
+The Personal Recipe Website is a single-user web application for collecting, organizing, and cooking from recipes. It replaces a manual workflow of browsing for inspiration and copying recipe details into a notes app. The application lets the user add recipes by pasting a link, pasting recipe data formatted by Claude AI (via the Owner's own Claude.ai subscription, outside this application), or entering details manually; enriches each recipe with personal metadata (rating, cost, cook notes, nutrition, labels); supports browsing and filtering that collection; and generates shopping lists that exclude common pantry staples and export to Apple Notes.
 
-The system is built on a static frontend (GitHub Pages), a managed database and file storage backend (Supabase free tier), and a serverless proxy (Cloudflare Worker free tier) that performs link scraping and screenshot OCR without exposing third-party API keys to the client. The application is installable as a Progressive Web App (PWA) and remains usable offline for previously loaded content.
+The system is built on a static frontend (GitHub Pages), a managed database and file storage backend (Supabase free tier), and a serverless proxy (Cloudflare Worker free tier) that performs link scraping. Recipe extraction from screenshots is handled outside this application: the Owner pastes a screenshot into their own Claude AI chat/project, which returns recipe data in a fixed JSON format that this application parses entirely client-side. No third-party API key or paid API call is required anywhere in this application, keeping it free to run. The application is installable as a Progressive Web App (PWA) and remains usable offline for previously loaded content.
 
 This document covers MVP scope only. The weekly meal planner (drag recipes onto a week, auto-merged shopping list across the week) is explicitly out of scope and deferred to v2.
 
@@ -13,9 +13,9 @@ This document covers MVP scope only. The weekly meal planner (drag recipes onto 
 - **Recipe_Site**: The single-user web application (frontend hosted on GitHub Pages) that this document describes.
 - **Recipe_Database**: The Supabase database that stores Recipe_Records, ratings, and cook notes.
 - **Photo_Storage**: The Supabase storage bucket that stores recipe photos.
-- **Ingestion_Worker**: The Cloudflare Worker that fetches recipe URLs, extracts structured data, and forwards screenshots to Claude's API on behalf of the Recipe_Site.
+- **Ingestion_Worker**: The Cloudflare Worker that fetches recipe URLs and extracts structured data on behalf of the Recipe_Site.
 - **Link_Parser**: The function within the Ingestion_Worker that fetches a recipe URL and extracts schema.org Recipe markup (e.g., ingredients, steps, time, servings).
-- **Screenshot_Parser**: The function within the Ingestion_Worker that sends an uploaded screenshot image to Claude's API and returns structured recipe data (ingredients, steps, time, servings).
+- **Claude_Import_Parser**: A client-side (browser-only) function that parses Owner-pasted, Claude-AI-formatted JSON text into structured recipe data (ingredients, steps, time, servings). No network call or third-party API key is involved; the Owner obtains the JSON by pasting a screenshot or description into their own Claude AI chat/project (outside this application) using a fixed prompt/format provided by the Recipe_Site.
 - **Recipe_Form**: The manual entry and edit user interface for creating or correcting a Recipe_Record.
 - **Recipe_Record**: A single recipe's structured data (name, source link, photo, ingredients, method, time, servings, rating, cost per portion, cook notes, nutrition, labels) stored in the Recipe_Database.
 - **Recipe_Under_Review**: A recipe whose data has been pre-filled by the Link_Parser or Screenshot_Parser (or is being manually entered) but has not yet been confirmed by the Owner and saved as a Recipe_Record. Tracked with a review-confirmed flag.
@@ -42,18 +42,18 @@ This document covers MVP scope only. The weekly meal planner (drag recipes onto 
 6. IF the Link_Parser does not receive a complete response from the submitted URL within 15 seconds, or the fetch otherwise fails, THEN THE Recipe_Site SHALL display an error message indicating that the recipe page could not be retrieved and SHALL NOT create a Recipe_Record.
 7. THE Recipe_Record created from a submitted URL SHALL store the submitted URL as its source link.
 
-### Requirement 2: Add Recipe via Screenshot
+### Requirement 2: Add Recipe via Pasted Claude AI Format
 
-**User Story:** As the Owner, I want to upload a screenshot of a recipe, so that I can save recipes from sources that don't provide structured data.
+**User Story:** As the Owner, I want to paste recipe data that I've had Claude AI format in my own chat (e.g., from a screenshot), so that I can save recipes from sources that don't provide structured data, without this application needing any paid API or third-party key.
 
 #### Acceptance Criteria
 
-1. WHEN the Owner uploads a screenshot image in JPEG, PNG, or WEBP format that is 10 MB or smaller to add a recipe, THE Recipe_Site SHALL send the image to the Screenshot_Parser.
-2. WHEN the Screenshot_Parser successfully returns structured recipe data, THE Recipe_Site SHALL pre-fill the Recipe_Form with the returned name, ingredients, method, time to cook, and servings.
-3. IF the Screenshot_Parser cannot extract structured recipe data from the uploaded image, or THE Ingestion_Worker cannot obtain a response from Claude's API for the uploaded image, THEN THE Recipe_Site SHALL notify the Owner that automatic extraction failed and SHALL offer the Recipe_Form for manual entry.
-4. IF the Owner uploads a screenshot image that is not in JPEG, PNG, or WEBP format, or that exceeds 10 MB, THEN THE Recipe_Site SHALL reject the upload, SHALL notify the Owner of the reason, and SHALL NOT send the image to the Screenshot_Parser.
-5. THE Recipe_Site SHALL offer the Recipe_Form for manual editing regardless of whether the Screenshot_Parser succeeds or fails.
-6. THE Ingestion_Worker SHALL forward screenshot images to Claude's API without exposing the API key to the client.
+1. THE Recipe_Site SHALL display a fixed prompt/format template that the Owner can copy and use in their own Claude AI chat or project to convert a screenshot or description into a specific JSON shape (name, ingredients, method, time to cook, servings, optional source link).
+2. WHEN the Owner pastes text into the Claude AI import field and submits it, THE Claude_Import_Parser SHALL attempt to parse the pasted text as JSON matching the documented shape, entirely client-side with no network request.
+3. WHEN the Claude_Import_Parser successfully parses pasted text into the documented shape, THE Recipe_Site SHALL pre-fill the Recipe_Form with the parsed name, ingredients, method, time to cook, and servings.
+4. IF the pasted text is not valid JSON, or valid JSON that does not match the documented shape, THEN THE Recipe_Site SHALL notify the Owner that the pasted text could not be parsed and SHALL offer the Recipe_Form for manual entry.
+5. THE Recipe_Site SHALL offer the Recipe_Form for manual editing regardless of whether the Claude_Import_Parser succeeds or fails.
+6. THE Claude_Import_Parser SHALL run entirely within the Owner's browser and SHALL NOT transmit the pasted text, or any part of it, to the Ingestion_Worker or any other server.
 
 ### Requirement 3: Add Recipe via Manual Entry
 
@@ -73,7 +73,7 @@ This document covers MVP scope only. The weekly meal planner (drag recipes onto 
 
 #### Acceptance Criteria
 
-1. WHEN the Link_Parser or Screenshot_Parser returns extracted recipe data, THE Recipe_Site SHALL present the data in the Recipe_Form as a Recipe_Under_Review before creating a Recipe_Record and SHALL set the Recipe_Under_Review's review-confirmed flag to false.
+1. WHEN the Link_Parser or Claude_Import_Parser returns extracted recipe data, THE Recipe_Site SHALL present the data in the Recipe_Form as a Recipe_Under_Review before creating a Recipe_Record and SHALL set the Recipe_Under_Review's review-confirmed flag to false.
 2. THE Recipe_Site SHALL allow the Owner to modify the name, source link, ingredients, method, time to cook, and servings fields of a Recipe_Under_Review prior to saving.
 3. WHILE a Recipe_Under_Review's review-confirmed flag is false, THE Recipe_Site SHALL NOT create a Recipe_Record from it.
 4. WHEN the Owner confirms the reviewed data, THE Recipe_Site SHALL set the Recipe_Under_Review's review-confirmed flag to true and SHALL create the Recipe_Record.
@@ -103,9 +103,7 @@ This document covers MVP scope only. The weekly meal planner (drag recipes onto 
 
 1. WHEN the Owner uploads a photo file in JPEG, PNG, or WEBP format not exceeding 10 MB for a Recipe_Record, THE Recipe_Site SHALL store the photo in Photo_Storage and SHALL associate it with the Recipe_Record, replacing any previously associated photo.
 2. IF the Owner uploads a photo file that is not in JPEG, PNG, or WEBP format, or that exceeds 10 MB, or if storing the photo in Photo_Storage fails, THEN THE Recipe_Site SHALL reject the upload, SHALL retain the Recipe_Record's previously associated photo (if any) unchanged, and SHALL notify the Owner that the upload failed.
-3. WHEN a screenshot is uploaded to add a recipe, THE Recipe_Site SHALL offer the Owner the option to use that screenshot as the Recipe_Record's photo.
-4. WHEN the Owner accepts the offer to use the screenshot as the Recipe_Record's photo, THE Recipe_Site SHALL store the screenshot in Photo_Storage and SHALL associate it with the Recipe_Record.
-5. IF a Recipe_Record has no associated photo, THEN THE Recipe_Site SHALL display a placeholder image in place of the photo.
+3. IF a Recipe_Record has no associated photo, THEN THE Recipe_Site SHALL display a placeholder image in place of the photo.
 
 ### Requirement 7: Rate Recipes
 
@@ -236,7 +234,7 @@ This document covers MVP scope only. The weekly meal planner (drag recipes onto 
 3. WHEN the Owner loads a Recipe_Record while online, THE Service_Worker SHALL cache that Recipe_Record for offline viewing.
 4. IF caching a Recipe_Record fails due to insufficient device storage, THEN THE Service_Worker SHALL discard the incomplete cache entry for that Recipe_Record and SHALL leave previously cached Recipe_Records intact.
 5. IF the Owner attempts to view, while offline, a Recipe_Record that has not been previously cached, THEN THE Recipe_Site SHALL notify the Owner that the recipe is unavailable offline.
-6. IF the Owner attempts an action that requires network access (such as adding a Recipe via link, uploading a screenshot, or signing in) while offline, THEN THE Recipe_Site SHALL notify the Owner that the action requires a network connection and SHALL preserve any in-progress input without submitting it.
+6. IF the Owner attempts an action that requires network access (such as adding a Recipe via link, uploading a photo, or signing in) while offline, THEN THE Recipe_Site SHALL notify the Owner that the action requires a network connection and SHALL preserve any in-progress input without submitting it.
 
 ### Requirement 18: Restrict Access to Single User
 

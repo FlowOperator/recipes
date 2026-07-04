@@ -6,7 +6,8 @@ The Personal Recipe Website (Recipe_Site) is a single-user, installable web appl
 
 - **GitHub Pages** hosts the static frontend (HTML/CSS/JS bundle, PWA manifest, service worker).
 - **Supabase (free tier)** provides Postgres (Recipe_Database), file storage (Photo_Storage), and single-user authentication.
-- **Cloudflare Worker (free tier)** acts as the Ingestion_Worker: a serverless proxy that fetches recipe URLs (Link_Parser) and forwards screenshots to Claude's API for OCR/structured extraction (Screenshot_Parser), so that no third-party secret (Claude API key) is ever shipped to the browser.
+- **Cloudflare Worker (free tier)** acts as the Ingestion_Worker: a serverless proxy that fetches recipe URLs and extracts schema.org Recipe markup (Link_Parser). This is the only server-side component; no third-party paid API or secret key is required anywhere in the system, keeping the application fully free to run.
+- **Claude_Import_Parser** is a pure client-side (in-browser) function, not a server component: the Owner uses their own Claude AI chat/project (outside this application, under their own subscription if any) to convert a screenshot or description into a fixed JSON shape, pastes that JSON into the Recipe_Site, and the parser validates/maps it locally with no network call.
 - **PWA_Shell** (web app manifest + Service_Worker) makes the site installable and lets previously viewed Recipe_Records remain viewable offline.
 
 This design covers MVP scope only, matching requirements.md. The weekly meal planner is out of scope.
@@ -16,7 +17,8 @@ This design covers MVP scope only, matching requirements.md. The weekly meal pla
 | Decision | Rationale |
 |---|---|
 | Static frontend + BaaS (Supabase) instead of a custom backend | No server to run means GitHub Pages hosting stays free and there's no server process to keep patched/running for a single-user app. |
-| Cloudflare Worker only for URL fetch + Claude proxy | Both operations need a secret (Claude API key) or need to bypass CORS restrictions on arbitrary third-party recipe sites; everything else (CRUD, filtering, auth) can talk to Supabase directly from the browser under Row Level Security (RLS). |
+| Cloudflare Worker used only for URL fetch | Fetching arbitrary third-party recipe pages needs to bypass browser CORS restrictions, which requires a server-side fetch; everything else (CRUD, filtering, auth) can talk to Supabase directly from the browser under Row Level Security (RLS). |
+| Claude AI recipe extraction done via the Owner's own Claude AI chat/project, not a server-side API call | Keeps the application entirely free to run (no Anthropic API billing account needed); the Owner already has full control over Claude AI outside this application, and pasting fixed-format JSON back in is a low-friction, zero-cost substitute for a Screenshot_Parser worker endpoint. |
 | Supabase Auth (email/password, single user) instead of a custom auth system | Requirement 18 only needs single-user gating, not multi-tenant auth; Supabase Auth + RLS gives session management, idle expiry, and DB-level enforcement for free. |
 | Client-side Postgres access via Supabase JS client + RLS, no custom REST layer | Keeps the frontend static (no server-rendered API) while still enforcing "Owner only" access at the database layer, which is more robust than relying on client-side checks alone. |
 | IndexedDB-backed offline cache (via service worker + Cache API/IndexedDB) rather than only HTTP cache | Recipe_Records are JSON data fetched via the Supabase client (not simple static GET requests), so caching full Recipe_Record payloads (including photo blobs) needs an app-level cache, not just the browser HTTP cache. |
@@ -31,15 +33,15 @@ graph TB
     subgraph "Owner's Device"
         Browser["Recipe_Site Frontend (PWA)<br/>Static JS/HTML/CSS<br/>hosted on GitHub Pages"]
         SW["Service_Worker<br/>+ offline cache (IndexedDB/Cache API)"]
+        ClaudeImport["Claude_Import_Parser<br/>(pure client-side JSON parser)"]
         Browser <--> SW
+        Browser <--> ClaudeImport
     end
 
     subgraph "Cloudflare (free tier)"
         Worker["Ingestion_Worker"]
         LinkParser["Link_Parser"]
-        ScreenshotParser["Screenshot_Parser"]
         Worker --> LinkParser
-        Worker --> ScreenshotParser
     end
 
     subgraph "Supabase (free tier)"
@@ -49,16 +51,16 @@ graph TB
     end
 
     ExternalSite["Third-party recipe page<br/>(schema.org Recipe markup)"]
-    Claude["Claude API"]
+    ClaudeAI["Owner's own Claude AI chat/project<br/>(outside this application)"]
 
     Browser -- "1. Sign in" --> Auth
     Browser -- "2. CRUD Recipe_Records,<br/>ratings, cook notes, labels" --> DB
     Browser -- "3. Upload/delete photos" --> Storage
     Browser -- "4. POST recipe URL" --> Worker
-    Browser -- "5. POST screenshot image" --> Worker
     LinkParser -- "fetch HTML" --> ExternalSite
-    ScreenshotParser -- "image + prompt<br/>(API key stays server-side)" --> Claude
     Worker -- "structured recipe JSON" --> Browser
+    Owner["Owner"] -. "5. paste screenshot,<br/>copy JSON response<br/>(manual, outside app)" .-> ClaudeAI
+    Owner -. "6. paste JSON into Recipe_Site" .-> ClaudeImport
 ```
 
 ### Request flow: Add recipe via link (Requirement 1)
@@ -93,9 +95,9 @@ sequenceDiagram
 ### Deployment / hosting model
 
 - Frontend: static bundle pushed to a `gh-pages` branch (or `docs/` folder) and served by GitHub Pages over HTTPS. No server-side rendering.
-- Ingestion_Worker: deployed via `wrangler`, bound to Cloudflare's free plan (100,000 requests/day, 10 ms CPU time per invocation on the free plan, up to 50 external subrequests per invocation). Both Link_Parser and Screenshot_Parser fetch external hosts, which count as external subrequests — comfortably within the free-plan subrequest limit for single-user usage.
+- Ingestion_Worker: deployed via `wrangler`, bound to Cloudflare's free plan (100,000 requests/day, 10 ms CPU time per invocation on the free plan, up to 50 external subrequests per invocation). Link_Parser fetches external hosts, which count as external subrequests — comfortably within the free-plan subrequest limit for single-user usage.
 - Supabase: single free project (paused after 7 days of total inactivity — acceptable for a personal app since any Owner visit resets the inactivity clock; 500 MB Postgres storage, 1 GB file storage, which is generous for recipe text + a modest number of photos).
-- Secrets: the Claude API key is stored as a Cloudflare Worker environment secret (`wrangler secret put`) and is never sent to or readable by the browser. The Supabase anon/public key is safe to ship to the client (per Supabase's design) because all data access is enforced by RLS policies scoped to the Owner's user id.
+- Secrets: no third-party paid API key is used anywhere in this system. The Supabase anon/public key is safe to ship to the client (per Supabase's design) because all data access is enforced by RLS policies scoped to the Owner's user id. The Ingestion_Worker holds no secrets at all in this design (it only fetches public recipe pages), though the Supabase JWT verification described below still gates who may call it.
 
 ## Components and Interfaces
 
@@ -105,13 +107,14 @@ Responsibilities:
 - Renders Recipe_Form, recipe list/grid, recipe detail, shopping list builder, and pantry exclusion list management UI.
 - Validates all bounded fields client-side before submission (Requirements 3.4, 8.1, 9.1, 11.1-11.3, 13.4, 14.3, 15.4) as a first line of defense; Supabase-side constraints (check constraints / RLS) act as the second line of defense.
 - Owns the Recipe_Under_Review state machine (Requirement 4): holds pre-filled or manually entered data in memory/local component state until the Owner confirms, at which point it calls the Recipe_Database to create a Recipe_Record.
-- Calls the Ingestion_Worker for link and screenshot ingestion; calls Supabase directly (via `@supabase/supabase-js`) for auth, CRUD, and storage.
-- Implements the pure, side-effect-free `mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, and `computeProteinPerCalorieRatio` functions used across Requirements 8, 10, 12, 13, 14, 15.
+- Calls the Ingestion_Worker for link ingestion; calls Supabase directly (via `@supabase/supabase-js`) for auth, CRUD, and storage.
+- Implements the pure, side-effect-free `mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, `computeProteinPerCalorieRatio`, and `Claude_Import_Parser` functions used across Requirements 2, 8, 10, 12, 13, 14, 15.
+- Displays a fixed, copyable prompt/format template (Requirement 2.1) instructing the Owner how to convert a screenshot or description into the documented JSON shape using their own Claude AI chat/project, entirely outside this application.
 - Registers the Service_Worker and manages the offline cache of viewed Recipe_Records.
 
 ### Ingestion_Worker (Cloudflare Worker)
 
-Exposes two endpoints. Both require the Owner's Supabase JWT (passed as `Authorization: Bearer <token>`) so the worker only serves the authenticated Owner, and both endpoints are stateless (no data is persisted by the worker itself).
+Exposes a single endpoint, requiring the Owner's Supabase JWT (passed as `Authorization: Bearer <token>`) so the worker only serves the authenticated Owner. The endpoint is stateless (no data is persisted by the worker itself) and holds no third-party secrets.
 
 #### Link_Parser
 
@@ -120,12 +123,12 @@ Exposes two endpoints. Both require the Owner's Supabase JWT (passed as `Authori
 - Behavior: fetches the URL with a 15-second timeout (Requirement 1.6), parses the response HTML for `schema.org/Recipe` JSON-LD or Microdata, and maps found fields to `{ name, ingredients[], method, timeToCookMinutes, servings }`. Fields not found are omitted (not defaulted to empty string) so the frontend can distinguish "not extracted" from "extracted as empty" (Requirement 1.4).
 - Response: `200 { extracted: true, fields: {...present fields...} }`, `200 { extracted: false }` (no markup found), or a `4xx/5xx`/timeout for fetch failures.
 
-#### Screenshot_Parser
+### Claude_Import_Parser (client-side only, no server component)
 
-- `POST /parse-screenshot`
-- Request: `multipart/form-data` with a single image field (frontend has already validated JPEG/PNG/WEBP and ≤10 MB — Requirement 2.4, so the worker enforces the same limits again server-side as defense in depth).
-- Behavior: forwards the image bytes to Claude's API with a structured-extraction prompt, using the Worker-held secret API key. Parses Claude's response into the same `{ name, ingredients[], method, timeToCookMinutes, servings }` shape.
-- Response: `200 { extracted: true, fields: {...} }` on success, `200 { extracted: false }` if Claude could not identify recipe structure, or `502/timeout` if Claude's API is unreachable (Requirement 2.3).
+- A pure function `parseClaudeImportJson(pastedText: string): { extracted: true, fields: {...} } | { extracted: false }` that runs entirely in the browser.
+- Behavior: attempts `JSON.parse` on the pasted text, then validates the parsed value against the documented shape `{ name?, sourceLink?, ingredients?: [{name, quantity, unit}], method?, timeToCookMinutes?, servings? }`. Fields present and correctly typed are returned; the whole parse is treated as failed (`extracted: false`) if the text isn't valid JSON or doesn't match the shape at all (Requirement 2.4).
+- No network request of any kind is made — the pasted text (which may contain the Owner's recipe data) never leaves the browser (Requirement 2.6). This also means there is no rate limit, quota, or cost associated with this import path.
+- The Recipe_Site's UI displays the exact prompt/schema the Owner should paste into their own Claude AI chat/project (Requirement 2.1), keeping the expected format in sync with what this parser accepts.
 
 ### Supabase Recipe_Database
 
@@ -175,10 +178,9 @@ Not a persisted table — an in-memory/client-state shape used while the Owner r
 
 | Field | Type | Notes |
 |---|---|---|
-| `fields` | partial `Recipe_Record` (all fields optional except this in-progress state itself) | pre-filled from Link_Parser/Screenshot_Parser response or blank for manual entry |
-| `source` | `"link" \| "screenshot" \| "manual"` | tracks provenance |
+| `fields` | partial `Recipe_Record` (all fields optional except this in-progress state itself) | pre-filled from Link_Parser/Claude_Import_Parser response or blank for manual entry |
+| `source` | `"link" \| "claude_import" \| "manual"` | tracks provenance |
 | `reviewConfirmed` | boolean | starts `false` (Requirement 4.1); becomes `true` only on explicit Owner confirmation, at which point the Recipe_Record is created (Requirement 4.4) |
-| `screenshotBlob` | Blob \| null | held in memory only if source is `"screenshot"`, offered as the candidate photo (Requirement 6.3-6.4) |
 
 ### Pantry_Exclusion_List
 
@@ -203,9 +205,14 @@ Seeded with `salt`, `pepper`, `oil` the first time the Owner's exclusion list is
 | Endpoint | Method | Auth | Request | Success Response | Failure Response |
 |---|---|---|---|---|---|
 | `/parse-link` | POST | `Authorization: Bearer <supabase JWT>` | `{ url: string }` | `200 { extracted: true, fields: {...} }` or `200 { extracted: false }` | `4xx` (bad request/auth), `504`/timeout after 15s (Requirement 1.6) |
-| `/parse-screenshot` | POST | `Authorization: Bearer <supabase JWT>` | `multipart/form-data`, image field, ≤10 MB, JPEG/PNG/WEBP | `200 { extracted: true, fields: {...} }` or `200 { extracted: false }` | `413` (too large/wrong type — though frontend should already have rejected this), `502`/timeout on Claude failure (Requirement 2.3) |
 
-The worker validates the JWT against Supabase's JWKS so only the Owner can invoke it, preventing third parties from using the proxy (and burning the free Claude/Cloudflare quota) even if they discover the worker URL.
+The worker validates the JWT against Supabase's JWKS so only the Owner can invoke it, preventing third parties from using the proxy (and burning the free Cloudflare quota) even if they discover the worker URL.
+
+### Frontend ↔ Claude_Import_Parser (no network, in-process only)
+
+| Function | Input | Success Output | Failure Output |
+|---|---|---|---|
+| `parseClaudeImportJson` | pasted text (string) | `{ extracted: true, fields: {...present fields...} }` | `{ extracted: false }` (invalid JSON or shape mismatch) |
 
 ### Frontend ↔ Supabase
 
@@ -219,7 +226,7 @@ The worker validates the JWT against Supabase's JWKS so only the Owner can invok
 - **Recipe_Record caching**: whenever the Owner opens a Recipe_Record while online, the frontend serializes that record (including a fetched copy of its photo, if any) and asks the Service_Worker to store it in an IndexedDB-backed offline store (Requirement 17.3). This is an explicit "cache this record" message rather than passive HTTP caching, because Recipe_Record data comes from Supabase's REST/RPC calls rather than a single cacheable URL.
 - **Storage-quota failure handling**: the caching write is wrapped so that if the browser's storage quota is exceeded (`QuotaExceededError` or similar), the partially written entry for that record is deleted and previously cached records are left untouched (Requirement 17.4) — implemented as an all-or-nothing transaction per record.
 - **Offline viewing**: the frontend checks network status; if offline, it reads only from the offline IndexedDB store. Requesting a record not present there shows "unavailable offline" (Requirement 17.5) rather than attempting (and failing) a network call.
-- **Offline write/network actions**: actions requiring network access (add via link, upload screenshot, sign in) check `navigator.onLine` (and handle failed fetches as an additional signal) before dispatching; if offline, the action is blocked, a notice is shown, and any in-progress form input is left in place in component state rather than cleared or submitted (Requirement 17.6).
+- **Offline write/network actions**: actions requiring network access (add via link, upload photo, sign in) check `navigator.onLine` (and handle failed fetches as an additional signal) before dispatching; if offline, the action is blocked, a notice is shown, and any in-progress form input is left in place in component state rather than cleared or submitted (Requirement 17.6). Note: the Claude AI import path (Requirement 2) needs no network access at all, so pasting Claude-formatted JSON works fully offline.
 - **Cache eviction**: no explicit eviction policy is required by the MVP; the offline store grows as the Owner views records. (Left as a possible v2 improvement, not a requirement.)
 
 ## Auth Approach
@@ -240,8 +247,7 @@ General principle: every failure path leaves existing data unchanged and surface
 | Malformed URL submitted (1.1) | Rejected client-side before any network call; inline "valid URL required" message. |
 | Link_Parser timeout/fetch failure (1.6) | Worker returns error/timeout after 15s; frontend shows "recipe page could not be retrieved" and does not create a Recipe_Record. |
 | No schema.org markup found (1.5) | Worker returns `extracted: false`; frontend shows "automatic extraction failed" and opens a blank Recipe_Form. |
-| Invalid screenshot format/size (2.4) | Rejected client-side (and re-checked by the worker) before upload; reason shown, worker never invoked. |
-| Screenshot parse/Claude failure (2.3) | Worker returns `extracted: false` or errors; frontend shows "automatic extraction failed" and still offers the Recipe_Form. |
+| Pasted Claude AI text is not valid JSON or doesn't match the documented shape (2.4) | `parseClaudeImportJson` returns `extracted: false` with no network call; frontend shows "could not parse pasted text" and still offers the Recipe_Form for manual entry. |
 | Invalid/out-of-bounds form field (3.5, 7.2, 8.2, 10.2, 11.4-11.5) | Submission rejected client-side (and by DB check constraints as a fallback); offending field(s) identified; all entered values preserved in the form so nothing needs retyping. |
 | Recipe_Database update/delete failure (5.4, 5.8) | Frontend leaves the in-memory Recipe_Record unchanged (does not optimistically apply the edit/deletion) and shows "update/deletion failed." |
 | Photo upload failure (6.2) | Previously associated photo path is left untouched in the Recipe_Record; "upload failed" shown. |
@@ -272,15 +278,15 @@ For any well-formed URL submitted to add a recipe, the resulting Recipe_Record's
 
 ### Property 3: Extraction pre-fill only sets returned fields
 
-For any extraction result (from Link_Parser or Screenshot_Parser) consisting of an arbitrary subset of `{name, ingredients, method, timeToCook, servings}`, pre-filling the Recipe_Form sets exactly the fields present in the result and leaves every other field blank.
+For any extraction result (from Link_Parser or Claude_Import_Parser) consisting of an arbitrary subset of `{name, ingredients, method, timeToCook, servings}`, pre-filling the Recipe_Form sets exactly the fields present in the result and leaves every other field blank.
 
-**Validates: Requirements 1.3, 1.4, 2.2**
+**Validates: Requirements 1.3, 1.4, 2.3**
 
-### Property 4: File type/size validation gates ingestion
+### Property 4: File type/size validation gates photo uploads
 
-For any candidate file with a given MIME type and byte size, the Recipe_Site sends it to the Screenshot_Parser (for screenshots) or stores it in Photo_Storage (for photo uploads) if and only if the MIME type is one of JPEG, PNG, or WEBP and the size is less than or equal to 10 MB; otherwise it is rejected with a reason and never sent.
+For any candidate file with a given MIME type and byte size, the Recipe_Site stores it in Photo_Storage if and only if the MIME type is one of JPEG, PNG, or WEBP and the size is less than or equal to 10 MB; otherwise it is rejected with a reason and never sent.
 
-**Validates: Requirements 2.1, 2.4, 6.1, 6.2**
+**Validates: Requirements 6.1, 6.2**
 
 ### Property 5: Recipe name is required, everywhere it can be set
 
@@ -470,7 +476,7 @@ For any Recipe_Record id not present in the offline cache, attempting to view it
 
 ### Property 36: Network-required actions are blocked offline without losing input
 
-For any of the network-requiring actions (add via link, upload screenshot, sign in) attempted while offline, and any in-progress input value for that action, the action does not reach the network, a "requires a network connection" notice is shown, and the in-progress input value is unchanged afterward.
+For any of the network-requiring actions (add via link, upload photo, sign in) attempted while offline, and any in-progress input value for that action, the action does not reach the network, a "requires a network connection" notice is shown, and the in-progress input value is unchanged afterward.
 
 **Validates: Requirements 17.6**
 
@@ -480,24 +486,30 @@ For any elapsed duration since the Owner's last activity, the client-side sessio
 
 **Validates: Requirements 18.5**
 
+### Property 38: Claude import parsing is JSON-shape gated and network-free
+
+For any pasted text string, `parseClaudeImportJson` returns `extracted: true` with the matching fields if and only if the text is valid JSON matching the documented shape (or a subset of its optional fields); otherwise it returns `extracted: false`. In neither case is any network request made.
+
+**Validates: Requirements 2.2, 2.4, 2.6**
+
 ## Testing Strategy
 
 ### Dual testing approach
 
-- **Unit/example tests** cover concrete flows and single-outcome scenarios that don't meaningfully vary with input: worker call wiring (1.2), extraction-failure UI flows (1.5, 1.6, 2.3, 2.5), form-affordance checks (3.1, 4.2), empty-collection/no-selection states (12.2, 14.4), deletion confirmation prompting (5.5), cook notes layout (9.3), Pantry_Exclusion_List default seeding (15.1), PWA manifest/service-worker registration (17.1, 17.2), and Supabase Auth/RLS enforcement (18.1-18.4, integration-tested against a real or emulated Supabase project).
-- **Property-based tests** cover the 37 properties above, each implemented as a single property-based test with a minimum of 100 generated iterations, using **fast-check** (the standard property-based testing library for JavaScript/TypeScript, matching the frontend's stack) for all pure client-side logic (validation functions, `mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, `computeProteinPerCalorieRatio`, the Recipe_Under_Review state machine, offline cache read/write against a mocked IndexedDB, and the idle-session-expiry boundary check).
-- Worker-facing properties (1, 3, 4) are tested against the pure mapping/validation functions with the Link_Parser/Screenshot_Parser HTTP calls mocked, so iteration cost stays low; a small number of separate integration tests exercise the real Cloudflare Worker against a fixed set of sample recipe pages/screenshots.
+- **Unit/example tests** cover concrete flows and single-outcome scenarios that don't meaningfully vary with input: worker call wiring (1.2), extraction-failure UI flows (1.5, 1.6, 2.4, 2.5), form-affordance checks (3.1, 4.2), empty-collection/no-selection states (12.2, 14.4), deletion confirmation prompting (5.5), cook notes layout (9.3), Pantry_Exclusion_List default seeding (15.1), PWA manifest/service-worker registration (17.1, 17.2), and Supabase Auth/RLS enforcement (18.1-18.4, integration-tested against a real or emulated Supabase project).
+- **Property-based tests** cover the 38 properties above, each implemented as a single property-based test with a minimum of 100 generated iterations, using **fast-check** (the standard property-based testing library for JavaScript/TypeScript, matching the frontend's stack) for all pure client-side logic (validation functions, `mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, `computeProteinPerCalorieRatio`, `parseClaudeImportJson`, the Recipe_Under_Review state machine, offline cache read/write against a mocked IndexedDB, and the idle-session-expiry boundary check).
+- Worker-facing properties (1, 3) are tested against the pure mapping/validation functions with the Link_Parser HTTP call mocked, so iteration cost stays low; a small number of separate integration tests exercise the real Cloudflare Worker against a fixed set of sample recipe pages. `parseClaudeImportJson` (Property 38) requires no mocking at all since it makes no network call.
 
 ### Property test configuration
 
 - Library: **fast-check** (`fc.assert(fc.property(...), { numRuns: 100 })` or higher).
 - Each test is tagged with a comment referencing its design property, in the format:
   `// Feature: personal-recipe-website, Property {number}: {property title}`
-- Each of the 37 properties above is implemented as exactly one property-based test.
+- Each of the 38 properties above is implemented as exactly one property-based test.
 
 ### Unit test focus
 
-- Specific extraction-failure and worker-error examples (1.5, 1.6, 2.3).
-- UI affordance checks (form fields present, deletion confirmation dialog, cook notes displayed separately).
+- Specific extraction-failure and worker-error examples (1.5, 1.6, 2.4).
+- UI affordance checks (form fields present, deletion confirmation dialog, cook notes displayed separately, copyable Claude AI prompt/format template shown per Requirement 2.1).
 - Default Pantry_Exclusion_List seeding (15.1) and empty-state messaging (12.2, 14.4, 13.2/13.3 edge instances already covered by Property 25 but a couple of concrete examples aid readability).
-- Integration tests: Link_Parser against 2-3 real recipe pages with/without schema.org markup; Screenshot_Parser against 2-3 real screenshots; Supabase RLS policies against authenticated vs. unauthenticated/mismatched-user requests (18.1-18.4); Cloudflare Worker JWT verification.
+- Integration tests: Link_Parser against 2-3 real recipe pages with/without schema.org markup; Supabase RLS policies against authenticated vs. unauthenticated/mismatched-user requests (18.1-18.4); Cloudflare Worker JWT verification.

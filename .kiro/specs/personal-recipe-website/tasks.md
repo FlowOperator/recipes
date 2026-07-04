@@ -2,7 +2,9 @@
 
 ## Overview
 
-This plan implements the Personal Recipe Website per requirements.md and design.md. Tasks are ordered by dependency: project scaffolding → data layer/auth → ingestion → recipe CRUD/review flow → labels/filters/search → shopping list/pantry exclusion → PWA offline. Property-based tests (fast-check, ≥100 runs, tagged `// Feature: personal-recipe-website, Property {N}: {title}`) are embedded next to the code they validate rather than deferred to the end. All 37 correctness properties from design.md are each covered by exactly one property-based test.
+This plan implements the Personal Recipe Website per requirements.md and design.md. Tasks are ordered by dependency: project scaffolding → data layer/auth → ingestion → recipe CRUD/review flow → labels/filters/search → shopping list/pantry exclusion → PWA offline. Property-based tests (fast-check, ≥100 runs, tagged `// Feature: personal-recipe-website, Property {N}: {title}`) are embedded next to the code they validate rather than deferred to the end. All 38 correctness properties from design.md are each covered by exactly one property-based test.
+
+Note: recipe ingestion from screenshots uses no paid API. The Owner pastes a screenshot into their own Claude AI chat/project (outside this application) using a fixed prompt/format the Recipe_Site displays, then pastes Claude's JSON response back into the Recipe_Site, which parses it entirely client-side (Claude_Import_Parser, Requirement 2). The Cloudflare Worker (Ingestion_Worker) only ever handles link parsing (Link_Parser) and holds no third-party secrets, keeping the whole application free to run.
 
 ## Task Dependency Graph
 
@@ -11,11 +13,9 @@ graph TD
     T1["1. Project scaffolding"] --> T2["2. Supabase schema, RLS, auth setup"]
     T2 --> T3["3. Frontend auth module"]
     T1 --> T4["4. Ingestion_Worker: Link_Parser"]
-    T1 --> T5["5. Ingestion_Worker: Screenshot_Parser"]
     T3 --> T6["6. Add Recipe via Link"]
     T4 --> T6
-    T3 --> T7["7. Add Recipe via Screenshot"]
-    T5 --> T7
+    T1 --> T7["7. Add Recipe via Claude AI Import"]
     T2 --> T8["8. Recipe photo storage"]
     T6 --> T9["9. Recipe_Under_Review + manual entry"]
     T7 --> T9
@@ -50,9 +50,9 @@ graph TD
 {
   "waves": [
     { "wave": 1, "tasks": [1] },
-    { "wave": 2, "tasks": [2, 4, 5] },
+    { "wave": 2, "tasks": [2, 4, 7] },
     { "wave": 3, "tasks": [3, 8] },
-    { "wave": 4, "tasks": [6, 7] },
+    { "wave": 4, "tasks": [6] },
     { "wave": 5, "tasks": [9] },
     { "wave": 6, "tasks": [10, 11, 12, 13, 14, 15, 16, 18] },
     { "wave": 7, "tasks": [17, 19, 20, 21] },
@@ -97,15 +97,7 @@ graph TD
   - [ ] 4.6 Write integration tests against 2-3 real recipe pages (one with full schema.org markup, one with none) to validate the live fetch + parse path.
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 5. Ingestion_Worker: Screenshot_Parser
-  - [ ] 5.1 Implement `POST /parse-screenshot`: accept multipart form data, re-validate MIME type (JPEG/PNG/WEBP) and size (≤10 MB) server-side as defense in depth (Requirement 2.4), reject with 413 otherwise.
-  - [ ] 5.2 Forward valid images to Claude's API using a Worker-held secret (`wrangler secret put`), with a structured-extraction prompt; map Claude's response to the same `{ name?, ingredients?, method?, timeToCookMinutes?, servings? }` shape.
-  - [ ] 5.3 Return `{ extracted: false }` when Claude cannot identify recipe structure, and a 502/timeout response when Claude's API is unreachable (Requirement 2.3).
-  - [ ] 5.4 Write a unit test confirming the API key is never included in any response payload or echoed back to the client.
-  - [ ] 5.5 Write a property-based test for file type/size gating shared with the frontend's photo upload validator (see Task 8): for any (MIME type, byte size) pair, the Worker accepts and forwards to Claude if and only if MIME type is JPEG/PNG/WEBP and size ≤ 10 MB.
-    - `// Feature: personal-recipe-website, Property 4: File type/size validation gates ingestion` (Screenshot_Parser half)
-  - [ ] 5.6 Write integration tests against 2-3 real screenshots to validate the live Claude round trip.
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6_
+- [ ] 5. (Removed) — screenshot ingestion no longer routes through the Ingestion_Worker or any paid API. See Task 7 for the client-side Claude AI import flow instead.
 
 - [ ] 6. Frontend: Add Recipe via Link
   - [ ] 6.1 Implement client-side well-formed URL validation (scheme + host) that rejects malformed submissions without calling the worker (Requirement 1.1).
@@ -118,27 +110,31 @@ graph TD
     - `// Feature: personal-recipe-website, Property 2: Source link preserved on record creation`
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
 
-- [ ] 7. Frontend: Add Recipe via Screenshot
-  - [ ] 7.1 Implement client-side screenshot file validator (JPEG/PNG/WEBP, ≤10 MB) reused from/shared with the photo upload validator in Task 8.
-  - [ ] 7.2 Wire "add via screenshot" submission to call `/parse-screenshot` with the validated file and Owner's JWT; on success, pre-fill the Recipe_Form as a Recipe_Under_Review with `source: "screenshot"` and hold the image blob in memory as `screenshotBlob`.
-  - [ ] 7.3 On extraction failure or Claude/API unreachable, show "automatic extraction failed" and still open the Recipe_Form for manual entry (Requirement 2.3, 2.5).
-  - [ ] 7.4 Write a property-based test for the shared file type/size validator (client-side half of Property 4): for any (MIME type, byte size) pair, the file is sent to the Screenshot_Parser if and only if it's JPEG/PNG/WEBP and ≤10 MB; otherwise rejected client-side with a reason and never sent.
-    - `// Feature: personal-recipe-website, Property 4: File type/size validation gates ingestion` (client-side half)
-  - [ ] 7.5 Write unit tests for the extraction-failure UI flow (2.3) and for "manual entry always offered regardless of outcome" (2.5).
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+- [ ] 7. Frontend: Add Recipe via Claude AI Import
+  - [ ] 7.1 Implement a UI panel displaying a fixed, copyable prompt/format template instructing the Owner how to convert a screenshot or description into the documented JSON shape (`{ name?, sourceLink?, ingredients?, method?, timeToCookMinutes?, servings? }`) using their own Claude AI chat/project (Requirement 2.1).
+  - [ ] 7.2 Implement the pure `parseClaudeImportJson(pastedText: string)` function: attempts `JSON.parse`, then validates against the documented shape; returns `{ extracted: true, fields: {...} }` for a full or partial match, or `{ extracted: false }` if the text isn't valid JSON or doesn't match the shape at all (Requirement 2.2, 2.4). Makes no network request under any circumstances (Requirement 2.6).
+  - [ ] 7.3 Wire the "paste from Claude AI" import field to call `parseClaudeImportJson` on submission; on success, pre-fill the Recipe_Form as a Recipe_Under_Review with `source: "claude_import"` (Requirement 2.3).
+  - [ ] 7.4 On parse failure, show "could not parse pasted text" and still open the Recipe_Form for manual entry (Requirement 2.4, 2.5).
+  - [ ] 7.5 Write a property-based test for Property 38 (Claude import parsing is JSON-shape gated and network-free): for any pasted text string, `extracted: true` with matching fields is returned if and only if the text is valid JSON matching the documented shape (or a subset of its optional fields); no network request is made in any case.
+    - `// Feature: personal-recipe-website, Property 38: Claude import parsing is JSON-shape gated and network-free`
+  - [ ] 7.6 Write a property-based test for the Claude-import half of Property 3 (extraction pre-fill only sets returned fields): for any subset of fields present in a parsed result, pre-filling the Recipe_Form sets exactly that subset and leaves the rest blank.
+    - `// Feature: personal-recipe-website, Property 3: Extraction pre-fill only sets returned fields` (Claude_Import_Parser half)
+  - [ ] 7.7 Write unit tests for the parse-failure UI flow (2.4) and for "manual entry always offered regardless of outcome" (2.5), and a unit test confirming no network call occurs during parsing (spy/mock `fetch` and assert it is never called).
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
 - [ ] 8. Frontend: Recipe photo storage
   - [ ] 8.1 Implement photo upload to `supabase.storage.from('recipe-photos').upload(path, file, { upsert: true })`, keyed by `recipe_id/photo` so re-upload replaces the previous photo (Requirement 6.1).
   - [ ] 8.2 Implement upload rejection (wrong format/size, or storage failure) that leaves the previously associated photo untouched and shows an error (Requirement 6.2).
-  - [ ] 8.3 Implement the "use screenshot as photo" offer/accept flow: offer shown whenever a screenshot was used for ingestion (6.3), and accepting stores `screenshotBlob` via the same upload path (6.4).
-  - [ ] 8.4 Implement placeholder image rendering wherever `photo_path` is null (Requirement 6.5).
-  - [ ] 8.5 Write a unit test confirming re-upload of a new photo replaces (not duplicates) the stored object at `recipe_id/photo`.
+  - [ ] 8.3 Implement placeholder image rendering wherever `photo_path` is null (Requirement 6.3).
+  - [ ] 8.4 Write a unit test confirming re-upload of a new photo replaces (not duplicates) the stored object at `recipe_id/photo`.
+  - [ ] 8.5 Write a property-based test for Property 4 (file type/size validation gates photo uploads): for any (MIME type, byte size) pair, the file is stored in Photo_Storage if and only if it's JPEG/PNG/WEBP and ≤10 MB; otherwise rejected client-side with a reason and never sent.
+    - `// Feature: personal-recipe-website, Property 4: File type/size validation gates photo uploads`
   - [ ] 8.6 Write a property-based test for Property 13 (photo placeholder invariant): for any Recipe_Record with `photo_path = null`, both detail view and list/grid render the placeholder image.
     - `// Feature: personal-recipe-website, Property 13: Photo placeholder invariant`
-  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - _Requirements: 6.1, 6.2, 6.3_
 
 - [ ] 9. Recipe_Under_Review state machine and manual entry
-  - [ ] 9.1 Implement the Recipe_Under_Review client-state shape (`fields`, `source`, `reviewConfirmed`, `screenshotBlob`) starting `reviewConfirmed: false` whenever populated from Link_Parser/Screenshot_Parser results or a blank manual-entry form (Requirement 4.1).
+  - [ ] 9.1 Implement the Recipe_Under_Review client-state shape (`fields`, `source: "link" | "claude_import" | "manual"`, `reviewConfirmed`) starting `reviewConfirmed: false` whenever populated from Link_Parser/Claude_Import_Parser results or a blank manual-entry form (Requirement 4.1).
   - [ ] 9.2 Implement field editing on a Recipe_Under_Review (name, source link, ingredients, method, time to cook, servings) without creating a Recipe_Record until confirmation (Requirement 4.2, 4.3).
   - [ ] 9.3 Implement field bounds validation shared across manual entry and review confirmation: name 1-200 chars, source link ≤2048 chars, ingredient line ≤200 chars/≤100 lines, method ≤10,000 chars, time to cook integer 1-1440, servings integer 1-100 (Requirement 3.4).
   - [ ] 9.4 Implement rejection behavior for invalid/out-of-bounds submissions that identifies the offending field(s) and preserves all other entered values (Requirement 3.3, 3.5).
@@ -266,7 +262,7 @@ graph TD
   - [ ] 20.3 Implement an IndexedDB-backed offline store and a "cache this record" message API the frontend calls whenever the Owner opens a Recipe_Record while online, storing the record and its photo (Requirement 17.3).
   - [ ] 20.4 Implement all-or-nothing cache-write handling: on simulated/real storage quota exhaustion, discard the incomplete entry and leave previously cached records intact (Requirement 17.4).
   - [ ] 20.5 Implement offline read path: when offline, read only from the IndexedDB store; show "unavailable offline" for records not present there (Requirement 17.5).
-  - [ ] 20.6 Implement offline gating for network-required actions (add via link, upload screenshot, sign in): check `navigator.onLine` before dispatch, block with a "requires a network connection" notice, and preserve in-progress input without submitting (Requirement 17.6).
+  - [ ] 20.6 Implement offline gating for network-required actions (add via link, upload photo, sign in): check `navigator.onLine` before dispatch, block with a "requires a network connection" notice, and preserve in-progress input without submitting (Requirement 17.6). Note: Claude AI import (Task 7) needs no network access and remains available offline.
   - [ ] 20.7 Write a property-based test for Property 33 (offline record caching is retrievable) against a mocked IndexedDB.
     - `// Feature: personal-recipe-website, Property 33: Offline record caching is retrievable`
   - [ ] 20.8 Write a property-based test for Property 34 (cache write failure is all-or-nothing) against a mocked IndexedDB with simulated storage exhaustion.
@@ -284,16 +280,16 @@ graph TD
   - _Requirements: 18.1, 18.2_
 
 - [ ] 22. Final wiring and smoke test
-  - [ ] 22.1 Wire all views into a single-page app shell with navigation between browse/filter, recipe detail, add-recipe (link/screenshot/manual), shopping list, and pantry exclusion management.
-  - [ ] 22.2 Run the full property-based and unit test suite; confirm all 37 properties have exactly one corresponding passing property-based test tagged per convention.
+  - [ ] 22.1 Wire all views into a single-page app shell with navigation between browse/filter, recipe detail, add-recipe (link/Claude AI import/manual), shopping list, and pantry exclusion management.
+  - [ ] 22.2 Run the full property-based and unit test suite; confirm all 38 properties have exactly one corresponding passing property-based test tagged per convention.
   - [ ] 22.3 Manually verify (or script) the GitHub Pages deploy, Cloudflare Worker deploy, and Supabase project are all reachable end-to-end from a production build.
   - _Requirements: (integration, supports all)_
 
 ## Notes
 
 - Every property-based test uses **fast-check** with `numRuns: 100` or higher, per design.md's Testing Strategy, and is tagged with a comment in the form `// Feature: personal-recipe-website, Property {N}: {title}` referencing the corresponding property in design.md.
-- Pure functions (`mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, `computeProteinPerCalorieRatio`, `isSessionExpired`, URL/file/field validators) should be implemented with no I/O so they can be exhaustively property-tested without mocking.
-- The Claude API key must only ever exist as a Cloudflare Worker secret (`wrangler secret put`); no task should introduce it into frontend code, environment files committed to the repo, or worker response payloads.
+- Pure functions (`mergeIngredients`, `filterByBudget`, `filterByCategories`, `searchByIngredient`, `applyPantryExclusion`, `computeProteinPerCalorieRatio`, `isSessionExpired`, `parseClaudeImportJson`, URL/file/field validators) should be implemented with no I/O so they can be exhaustively property-tested without mocking.
+- No third-party paid API key is used anywhere in this application. The Ingestion_Worker (Cloudflare Worker) holds no secrets and only performs link fetching; Claude AI recipe extraction happens entirely in the Owner's own Claude AI chat/project outside this application, and the resulting JSON is parsed client-side with zero network calls (`parseClaudeImportJson`). This keeps the entire stack on free tiers.
 - Client-side validation (bounds, formats, URL well-formedness) is a first line of defense; Supabase check constraints and RLS policies are the second line of defense and must independently enforce the same rules so a bypassed client never corrupts data or exposes another user's data.
-- Tasks 4-5 (Worker) and Tasks 3, 6-20 (frontend) can be developed in parallel once Task 1-2 scaffolding is complete, since the frontend can mock worker responses during development per the design's testing strategy.
+- Task 4 (Worker) and Tasks 3, 6-20 (frontend) can be developed in parallel once Task 1-2 scaffolding is complete, since the frontend can mock worker responses during development per the design's testing strategy.
 - The 30-day idle session timeout (Requirement 18.5) is a default assumption noted in requirements.md; confirm with the Owner before or during Task 3.3 if a different duration is preferred.
