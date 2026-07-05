@@ -1,0 +1,17 @@
+{
+  "name": "Recipe Site",
+  "short_name": "Recipes",
+  "description": "Personal recipe collection",
+  "start_url": "/recipes/",
+  "scope": "/recipes/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#aa3bff",
+  "icons": [
+    {
+      "src": "/recipes/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
