@@ -80,3 +80,15 @@ export function validateRecipeForm(data: RecipeFormData): ValidationError[] {
 }
 
 export { VALID_CATEGORIES };
+
+export const COURSES = [
+  'appetizer', 'beverage', 'breakfast', 'brunch', 'dessert',
+  'main dish', 'side dish', 'snack',
+];
+
+export const FOOD_CATEGORIES = [
+  'barbecue', 'beef', 'bread', 'cake', 'casserole', 'chicken',
+  'chocolate', 'cookie', 'egg', 'fish', 'lamb', 'muffin',
+  'noodle', 'pasta', 'pie', 'pork', 'rice', 'salad',
+  'sandwich', 'sauce', 'soup', 'tart', 'vegetable', 'vegetarian',
+];

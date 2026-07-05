@@ -1,5 +1,5 @@
 import type { ExtractedRecipeFields, RecipeIngredient } from '../lib/recipeTypes';
-import { validateRecipeForm, VALID_CATEGORIES } from '../lib/recipeValidation';
+import { validateRecipeForm, VALID_CATEGORIES, COURSES, FOOD_CATEGORIES } from '../lib/recipeValidation';
 import { createRecipe } from '../lib/recipeStore';
 
 export interface RecipeFormCallbacks {
@@ -20,6 +20,14 @@ export function renderRecipeForm(
 ): void {
   const categoriesHtml = VALID_CATEGORIES.map(
     (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" /> ${cat}</label>`
+  ).join('');
+
+  const coursesHtml = COURSES.map(
+    (c) => `<label class="category-chip"><input type="checkbox" name="courses" value="${c}" /> ${c}</label>`
+  ).join('');
+
+  const foodCatsHtml = FOOD_CATEGORIES.map(
+    (c) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${c}" /> ${c}</label>`
   ).join('');
 
   const ingredientsText = prefill?.ingredients
@@ -73,8 +81,18 @@ export function renderRecipeForm(
         </div>
 
         <fieldset class="categories-fieldset">
-          <legend>Categories * (select at least one)</legend>
+          <legend>Meal type * (select at least one)</legend>
           <div class="categories-grid">${categoriesHtml}</div>
+        </fieldset>
+
+        <fieldset class="categories-fieldset">
+          <legend>Course</legend>
+          <div class="categories-grid">${coursesHtml}</div>
+        </fieldset>
+
+        <fieldset class="categories-fieldset">
+          <legend>Category</legend>
+          <div class="categories-grid">${foodCatsHtml}</div>
         </fieldset>
 
         <p id="rf-error" class="signin-error" role="alert" aria-live="polite"></p>
