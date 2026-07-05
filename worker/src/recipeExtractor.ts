@@ -16,6 +16,8 @@ export interface ExtractedRecipeFields {
   method?: string;
   timeToCookMinutes?: number;
   servings?: number;
+  caloriesPerServing?: number;
+  proteinPerServing?: number;
 }
 
 export interface ExtractionResult {
@@ -64,6 +66,16 @@ function parseIsoDurationToMinutes(iso: string): number | undefined {
   const minutes = match[2] ? Number(match[2]) : 0;
   const total = hours * 60 + minutes;
   return total > 0 ? total : undefined;
+}
+
+/** Parses a nutrition value like "450 calories" or "32g" into a number. */
+function parseNutritionValue(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const match = value.match(/[\d.]+/);
+    if (match) return Number(match[0]);
+  }
+  return undefined;
 }
 
 function parseYield(yieldValue: unknown): number | undefined {
@@ -134,6 +146,15 @@ export function mapSchemaOrgRecipeToFields(recipe: Record<string, unknown>): Ext
   const servings = parseYield(recipe.recipeYield);
   if (servings !== undefined) {
     fields.servings = servings;
+  }
+
+  // Extract nutrition if available (schema.org NutritionInformation)
+  const nutrition = recipe.nutrition as Record<string, unknown> | undefined;
+  if (nutrition && typeof nutrition === 'object') {
+    const calories = parseNutritionValue(nutrition.calories);
+    if (calories !== undefined) fields.caloriesPerServing = calories;
+    const protein = parseNutritionValue(nutrition.proteinContent);
+    if (protein !== undefined) fields.proteinPerServing = protein;
   }
 
   return fields;

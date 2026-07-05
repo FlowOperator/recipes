@@ -104,7 +104,14 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           <input id="ingredient-search" type="text" placeholder="Search by ingredient..." maxlength="100" />
         </div>
         <div class="sort-row">
-          <button id="sort-protein" type="button" class="sort-btn">Sort: Protein/calorie ↓</button>
+          <button id="sort-protein" type="button" class="sort-btn">Sort: Protein/cal ↓</button>
+          <button id="sort-stars" type="button" class="sort-btn">Sort: Rating ↓</button>
+          <select id="filter-stars" class="sort-btn">
+            <option value="">All ratings</option>
+            <option value="5">★★★★★</option>
+            <option value="4">★★★★+</option>
+            <option value="3">★★★+</option>
+          </select>
         </div>
         <details class="filter-panel">
           <summary>Filter by category</summary>
@@ -119,14 +126,20 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     let filteredRecipes = recipes;
 
     let sortByProtein = false;
+    let sortByStars = false;
 
     function applyFilters() {
       const selectedCats = Array.from(main.querySelectorAll<HTMLInputElement>('.filter-chips input:checked')).map(cb => cb.value);
       const searchTerm = (main.querySelector<HTMLInputElement>('#ingredient-search')!).value;
+      const minStars = (main.querySelector<HTMLSelectElement>('#filter-stars')!).value;
 
       filteredRecipes = filterByCategories(recipes, selectedCats);
       if (searchTerm.trim().length > 0) {
         filteredRecipes = searchByIngredient(filteredRecipes, searchTerm);
+      }
+      if (minStars) {
+        const min = Number(minStars);
+        filteredRecipes = filteredRecipes.filter(r => (r.rating ?? 0) >= min);
       }
       if (sortByProtein) {
         filteredRecipes = [...filteredRecipes].sort((a, b) => {
@@ -136,6 +149,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             ? b.protein_per_serving / b.calories_per_serving : 0;
           return ratioB - ratioA;
         });
+      }
+      if (sortByStars) {
+        filteredRecipes = [...filteredRecipes].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
       }
 
       const listEl = main.querySelector<HTMLElement>('#recipe-list')!;
@@ -151,11 +167,29 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     main.querySelector<HTMLInputElement>('#ingredient-search')!.addEventListener('input', applyFilters);
     main.querySelector<HTMLButtonElement>('#sort-protein')!.addEventListener('click', () => {
       sortByProtein = !sortByProtein;
+      sortByStars = false;
       const btn = main.querySelector<HTMLButtonElement>('#sort-protein')!;
+      const btn2 = main.querySelector<HTMLButtonElement>('#sort-stars')!;
       btn.classList.toggle('sort-active', sortByProtein);
-      btn.textContent = sortByProtein ? 'Sort: Protein/calorie ↓ ✓' : 'Sort: Protein/calorie ↓';
+      btn2.classList.remove('sort-active');
+      btn.textContent = sortByProtein ? 'Sort: Protein/cal ↓ ✓' : 'Sort: Protein/cal ↓';
+      btn2.textContent = 'Sort: Rating ↓';
       applyFilters();
     });
+
+    main.querySelector<HTMLButtonElement>('#sort-stars')!.addEventListener('click', () => {
+      sortByStars = !sortByStars;
+      sortByProtein = false;
+      const btn = main.querySelector<HTMLButtonElement>('#sort-stars')!;
+      const btn2 = main.querySelector<HTMLButtonElement>('#sort-protein')!;
+      btn.classList.toggle('sort-active', sortByStars);
+      btn2.classList.remove('sort-active');
+      btn.textContent = sortByStars ? 'Sort: Rating ↓ ✓' : 'Sort: Rating ↓';
+      btn2.textContent = 'Sort: Protein/cal ↓';
+      applyFilters();
+    });
+
+    main.querySelector<HTMLSelectElement>('#filter-stars')!.addEventListener('change', applyFilters);
 
     function attachCardListeners(el: HTMLElement) {
       el.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
