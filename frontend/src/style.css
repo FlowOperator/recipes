@@ -610,3 +610,140 @@ pre {
 
 /* === NAV TABS (old) - replaced by bottom nav === */
 .add-nav { display: none; }
+
+/* === INGREDIENT PICKER (Add to Shopping List) === */
+.sl-picker {
+  text-align: left;
+}
+
+.sl-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sl-picker-header button {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-primary);
+}
+
+.sl-picker-header h2 { font-size: 18px; }
+
+.sl-pick-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.sl-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sl-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.sl-pick-item input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--primary);
+}
+
+.sl-pick-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-bottom: 20px;
+}
+
+.sl-pick-actions button { flex: 1; }
+
+/* === SHOPPING LIST VIEW === */
+.sl-view { text-align: left; }
+.sl-view h2 { font-size: 18px; margin-bottom: 12px; }
+.sl-count { font-size: 14px; color: var(--text-secondary); font-weight: 400; }
+
+.sl-groups { margin-bottom: 16px; }
+
+.sl-group { margin-bottom: 16px; }
+
+.sl-group-title {
+  font-size: 14px;
+  color: var(--primary-dark);
+  font-weight: 600;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--primary-light);
+}
+
+.sl-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.sl-item-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sl-item-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  accent-color: var(--primary);
+}
+
+.sl-item-text {
+  font-size: 15px;
+}
+
+.sl-item-checked .sl-item-text {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.sl-item-sources {
+  font-size: 11px;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.sl-item-delete {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+}
+
+.sl-item-delete:hover { color: var(--error); }
+
+.sl-bottom-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.sl-bottom-actions button { flex: 1; min-width: 100px; }

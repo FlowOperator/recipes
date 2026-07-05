@@ -1,6 +1,7 @@
 import type { RecipeRecord } from '../lib/recipeStore';
 import { updateRecipe, deleteRecipe } from '../lib/recipeStore';
 import { getPhotoUrl } from '../lib/photoStorage';
+import { renderAddToShoppingList } from './addToShoppingList';
 
 export interface RecipeDetailCallbacks {
   onBack: () => void;
@@ -49,6 +50,7 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
       <ul class="detail-ingredients">
         ${recipe.ingredients.map(i => `<li>${formatIngredient(i)}</li>`).join('')}
       </ul>
+      <button id="add-to-sl" type="button" class="btn-primary" style="margin-top:8px">🛒 Add to shopping list</button>
 
       <h3>Method</h3>
       <div class="detail-method">${esc(recipe.method).replace(/\n/g, '<br>')}</div>
@@ -87,6 +89,13 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
     const result = await updateRecipe(recipe.id, { cook_notes: textarea.value });
     statusEl.textContent = result.ok ? 'Notes saved.' : 'Failed to save notes.';
     if (result.ok) recipe.cook_notes = textarea.value;
+  });
+
+  // Add to shopping list
+  container.querySelector<HTMLButtonElement>('#add-to-sl')!.addEventListener('click', () => {
+    renderAddToShoppingList(container, recipe, () => {
+      renderRecipeDetail(container, recipe, callbacks);
+    });
   });
 
   // Delete

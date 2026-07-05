@@ -3,6 +3,7 @@ import { renderAddViaLink } from './addViaLink';
 import { renderAddViaClaude } from './addViaClaude';
 import { renderRecipeForm } from './recipeForm';
 import { renderRecipeDetail } from './recipeDetail';
+import { renderShoppingListView } from './shoppingListView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
@@ -218,8 +219,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   container.querySelector<HTMLButtonElement>('#nav-manual')!.addEventListener('click', showManualView);
   container.querySelector<HTMLButtonElement>('#nav-shop')!.addEventListener('click', async () => {
     setActiveNav('nav-shop');
-    const recipes = await listRecipes();
-    showShoppingList(recipes);
+    renderShoppingListView(main);
   });
 
   // Default view
