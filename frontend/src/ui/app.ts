@@ -4,7 +4,7 @@ import { renderAddViaClaude } from './addViaClaude';
 import { renderRecipeForm } from './recipeForm';
 import { renderRecipeDetail } from './recipeDetail';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
-import { getPhotoUrl } from '../lib/photoStorage';
+import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
 import { mergeIngredients, applyPantryExclusion, formatShoppingListForExport, type ShoppingListItem } from '../lib/shoppingList';
 import { VALID_CATEGORIES } from '../lib/recipeValidation';
@@ -234,9 +234,10 @@ function formatItemDisplay(item: ShoppingListItem): string {
 
 function renderRecipeCard(recipe: RecipeRecord): string {
   const photoUrl = getPhotoUrl(recipe.photo_path);
+  const emoji = getPlaceholderEmoji(recipe.filter_categories);
   const photoHtml = photoUrl
-    ? `<img src="${photoUrl}" alt="${escapeAttr(recipe.name)}" class="card-photo" />`
-    : `<div class="card-photo placeholder">🍽️</div>`;
+    ? `<img src="${photoUrl}" alt="${escapeAttr(recipe.name)}" class="card-photo" loading="lazy" />`
+    : `<div class="card-photo placeholder">${emoji}</div>`;
 
   const stars = recipe.rating
     ? '★'.repeat(recipe.rating) + '☆'.repeat(5 - recipe.rating)

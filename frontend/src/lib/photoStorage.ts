@@ -52,10 +52,35 @@ export async function deleteRecipePhoto(recipeId: string): Promise<boolean> {
 }
 
 /**
- * Returns the public URL for a recipe's photo, or null if none.
+ * Returns the public URL for a recipe's photo. If no photo was manually
+ * uploaded, returns null and the UI will show a generated placeholder.
  */
 export function getPhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null;
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(photoPath);
   return data.publicUrl;
+}
+
+/** Category-to-emoji mapping for auto-generated placeholders. Free, offline, no API. */
+const CATEGORY_EMOJIS: Record<string, string> = {
+  breakfast: '🥐',
+  lunch: '🥗',
+  dinner: '🍝',
+  healthy: '🥦',
+  'quick and easy': '⚡',
+  'dinner party': '🍷',
+  family: '👨‍👩‍👧‍👦',
+  'one-pot': '🍲',
+  budget: '💰',
+};
+
+/**
+ * Returns an emoji based on the recipe's first filter category.
+ * Used as the visual placeholder when no photo is uploaded.
+ */
+export function getPlaceholderEmoji(categories: string[]): string {
+  for (const cat of categories) {
+    if (CATEGORY_EMOJIS[cat]) return CATEGORY_EMOJIS[cat];
+  }
+  return '🍽️';
 }
