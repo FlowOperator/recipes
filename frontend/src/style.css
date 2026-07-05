@@ -157,3 +157,49 @@ button:disabled {
 .app-header h1 {
   margin: 0;
 }
+
+.add-via-link {
+  text-align: left;
+}
+
+.add-via-link form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-via-link label {
+  font-size: 14px;
+  color: var(--text-h);
+  margin-top: 10px;
+}
+
+.add-via-link input {
+  font-family: var(--sans);
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text-h);
+}
+
+.add-via-link button[type='submit'] {
+  margin-top: 18px;
+}
+
+.secondary-action {
+  margin-top: 16px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--input-bg);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  text-align: left;
+  font-size: 14px;
+}
