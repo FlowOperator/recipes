@@ -15,4 +15,6 @@ export interface ExtractedRecipeFields {
   method?: string;
   timeToCookMinutes?: number;
   servings?: number;
+  caloriesPerServing?: number;
+  proteinPerServing?: number;
 }

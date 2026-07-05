@@ -226,6 +226,20 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   showBrowse();
 }
 
+function buildNutritionBadge(recipe: RecipeRecord): string {
+  if (recipe.calories_per_serving == null && recipe.protein_per_serving == null) return '';
+
+  const parts: string[] = [];
+  if (recipe.calories_per_serving != null) parts.push(`${recipe.calories_per_serving} kcal`);
+  if (recipe.protein_per_serving != null) parts.push(`${recipe.protein_per_serving}g protein`);
+  if (recipe.calories_per_serving && recipe.calories_per_serving > 0 && recipe.protein_per_serving != null) {
+    const ratio = (recipe.protein_per_serving / recipe.calories_per_serving * 1000).toFixed(0);
+    parts.push(`${ratio}g/1000kcal`);
+  }
+
+  return `<div class="card-nutrition">${parts.map(p => `<span>${p}</span>`).join('')}</div>`;
+}
+
 function formatItemDisplay(item: ShoppingListItem): string {
   if (item.quantity != null && item.unit) return `${item.quantity} ${item.unit} ${item.name}`;
   if (item.quantity != null) return `${item.quantity} ${item.name}`;
@@ -243,6 +257,8 @@ function renderRecipeCard(recipe: RecipeRecord): string {
     ? '★'.repeat(recipe.rating) + '☆'.repeat(5 - recipe.rating)
     : '<span class="unrated">Not rated</span>';
 
+  const nutritionHtml = buildNutritionBadge(recipe);
+
   return `
     <article class="recipe-card" data-id="${recipe.id}" role="button" tabindex="0">
       ${photoHtml}
@@ -253,6 +269,7 @@ function renderRecipeCard(recipe: RecipeRecord): string {
           ${recipe.time_to_cook_minutes ? `<span>${recipe.time_to_cook_minutes} min</span>` : ''}
           ${recipe.servings ? `<span>${recipe.servings} servings</span>` : ''}
         </div>
+        ${nutritionHtml}
         <div class="card-categories">${recipe.filter_categories.map((c) => `<span class="tag">${c}</span>`).join('')}</div>
       </div>
     </article>

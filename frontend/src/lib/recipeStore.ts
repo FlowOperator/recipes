@@ -31,6 +31,9 @@ export interface CreateRecipeInput {
   time_to_cook_minutes?: number | null;
   servings?: number | null;
   filter_categories: string[];
+  calories_per_serving?: number | null;
+  protein_per_serving?: number | null;
+  cost_per_portion?: number | null;
 }
 
 /**
@@ -52,6 +55,9 @@ export async function createRecipe(input: CreateRecipeInput): Promise<{ ok: bool
     time_to_cook_minutes: input.time_to_cook_minutes ?? null,
     servings: input.servings ?? null,
     filter_categories: input.filter_categories,
+    calories_per_serving: input.calories_per_serving ?? null,
+    protein_per_serving: input.protein_per_serving ?? null,
+    cost_per_portion: input.cost_per_portion ?? null,
     cook_notes: '',
     dietary_labels: [],
     key_ingredient_labels: [],

@@ -53,6 +53,25 @@ export function renderRecipeForm(
           </div>
         </div>
 
+        <div class="form-row">
+          <div>
+            <label for="rf-calories">Calories per serving</label>
+            <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="" />
+          </div>
+          <div>
+            <label for="rf-protein">Protein per serving (g)</label>
+            <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="rf-cost">Cost per portion (£)</label>
+            <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="" />
+          </div>
+          <div></div>
+        </div>
+
         <fieldset class="categories-fieldset">
           <legend>Categories * (select at least one)</legend>
           <div class="categories-grid">${categoriesHtml}</div>
@@ -93,6 +112,9 @@ export function renderRecipeForm(
       time_to_cook_minutes: formData.timeToCookMinutes,
       servings: formData.servings,
       filter_categories: formData.filterCategories,
+      calories_per_serving: formData.caloriesPerServing,
+      protein_per_serving: formData.proteinPerServing,
+      cost_per_portion: formData.costPerPortion,
     });
 
     submitBtn.disabled = false;
@@ -116,6 +138,9 @@ function extractFormData(form: HTMLFormElement) {
   const method = (form.elements.namedItem('method') as HTMLTextAreaElement).value;
   const timeRaw = (form.elements.namedItem('timeToCookMinutes') as HTMLInputElement).value;
   const servingsRaw = (form.elements.namedItem('servings') as HTMLInputElement).value;
+  const caloriesRaw = (form.elements.namedItem('caloriesPerServing') as HTMLInputElement).value;
+  const proteinRaw = (form.elements.namedItem('proteinPerServing') as HTMLInputElement).value;
+  const costRaw = (form.elements.namedItem('costPerPortion') as HTMLInputElement).value;
 
   const categories = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="categories"]:checked'))
     .map((cb) => cb.value);
@@ -133,6 +158,9 @@ function extractFormData(form: HTMLFormElement) {
     method,
     timeToCookMinutes: timeRaw ? Number(timeRaw) : null,
     servings: servingsRaw ? Number(servingsRaw) : null,
+    caloriesPerServing: caloriesRaw ? Number(caloriesRaw) : null,
+    proteinPerServing: proteinRaw ? Number(proteinRaw) : null,
+    costPerPortion: costRaw ? Number(costRaw) : null,
     filterCategories: categories,
   };
 }

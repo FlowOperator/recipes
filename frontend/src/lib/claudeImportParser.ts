@@ -63,6 +63,16 @@ export function parseClaudeImportJson(pastedText: string): ClaudeImportResult {
     hasAnyField = true;
   }
 
+  if (typeof obj.caloriesPerServing === 'number' && obj.caloriesPerServing >= 0) {
+    fields.caloriesPerServing = Math.round(obj.caloriesPerServing);
+    hasAnyField = true;
+  }
+
+  if (typeof obj.proteinPerServing === 'number' && obj.proteinPerServing >= 0) {
+    fields.proteinPerServing = Math.round(obj.proteinPerServing * 10) / 10;
+    hasAnyField = true;
+  }
+
   if (!hasAnyField) {
     return { extracted: false };
   }
@@ -96,11 +106,14 @@ export const CLAUDE_PROMPT_TEMPLATE = `Extract this recipe into the following JS
   ],
   "method": "Step 1. Do this.\\nStep 2. Do that.\\n...",
   "timeToCookMinutes": 30,
-  "servings": 4
+  "servings": 4,
+  "caloriesPerServing": 450,
+  "proteinPerServing": 32
 }
 
 Rules:
 - quantity should be a number or null if unclear
 - unit should be a string (g, ml, tbsp, tsp, cups, etc.) or null if it's just a count
 - method should be all steps joined with newlines
+- caloriesPerServing and proteinPerServing should be your best estimate based on the ingredients and portions, or omit if you genuinely can't estimate
 - omit any field you cannot determine from the source`;

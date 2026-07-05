@@ -747,3 +747,19 @@ pre {
 }
 
 .sl-bottom-actions button { flex: 1; min-width: 100px; }
+
+.card-nutrition {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--primary-dark);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.card-nutrition span {
+  background: var(--primary-light);
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
