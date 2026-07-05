@@ -15,6 +15,14 @@ export interface RecipeRecord {
   cook_notes: string;
   calories_per_serving: number | null;
   protein_per_serving: number | null;
+  total_fat: number | null;
+  saturated_fat: number | null;
+  cholesterol: number | null;
+  sodium: number | null;
+  total_carbohydrate: number | null;
+  dietary_fiber: number | null;
+  sugars: number | null;
+  serving_size: string | null;
   dietary_labels: string[];
   key_ingredient_labels: string[];
   filter_categories: string[];

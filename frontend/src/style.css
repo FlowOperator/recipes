@@ -763,3 +763,27 @@ pre {
   border-radius: 8px;
   white-space: nowrap;
 }
+
+.detail-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.detail-edit-row label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 120px;
+}
+
+.detail-edit-row input {
+  font-family: var(--sans);
+  font-size: 15px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  width: 100px;
+}

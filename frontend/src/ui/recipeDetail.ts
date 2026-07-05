@@ -39,9 +39,54 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
       </div>
 
       <div class="detail-nutrition">
-        ${recipe.calories_per_serving != null ? `<span>${recipe.calories_per_serving} kcal</span>` : ''}
-        ${recipe.protein_per_serving != null ? `<span>${recipe.protein_per_serving}g protein</span>` : ''}
-        <span>Protein/cal: ${ratio}</span>
+        <h3>Nutrition (per serving)</h3>
+        <div class="detail-edit-row">
+          <label>Serving size</label>
+          <input id="edit-serving-size" type="text" maxlength="50" value="${esc(recipe.serving_size ?? '')}" placeholder="e.g. 1 bowl" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Calories</label>
+          <input id="edit-calories" type="number" min="0" step="1" value="${recipe.calories_per_serving ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Total Fat (g)</label>
+          <input id="edit-fat" type="number" min="0" step="0.1" value="${recipe.total_fat ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Saturated Fat (g)</label>
+          <input id="edit-sat-fat" type="number" min="0" step="0.1" value="${recipe.saturated_fat ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Cholesterol (mg)</label>
+          <input id="edit-cholesterol" type="number" min="0" step="1" value="${recipe.cholesterol ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Sodium (mg)</label>
+          <input id="edit-sodium" type="number" min="0" step="1" value="${recipe.sodium ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Carbohydrates (g)</label>
+          <input id="edit-carbs" type="number" min="0" step="0.1" value="${recipe.total_carbohydrate ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Dietary Fiber (g)</label>
+          <input id="edit-fiber" type="number" min="0" step="0.1" value="${recipe.dietary_fiber ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Sugars (g)</label>
+          <input id="edit-sugars" type="number" min="0" step="0.1" value="${recipe.sugars ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Protein (g)</label>
+          <input id="edit-protein" type="number" min="0" step="0.1" value="${recipe.protein_per_serving ?? ''}" />
+        </div>
+        <div class="detail-edit-row">
+          <label>Cost/portion (£)</label>
+          <input id="edit-cost" type="number" min="0" max="9999.99" step="0.01" value="${recipe.cost_per_portion ?? ''}" />
+        </div>
+        <button id="save-nutrition" type="button">Save nutrition & cost</button>
+        <p id="nutrition-status" class="form-error" role="alert"></p>
+        <span class="ratio-display">Protein/cal ratio: ${ratio}</span>
       </div>
 
       <div class="detail-categories">${recipe.filter_categories.map(c => `<span class="tag">${c}</span>`).join('')}</div>
@@ -89,6 +134,37 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
     const result = await updateRecipe(recipe.id, { cook_notes: textarea.value });
     statusEl.textContent = result.ok ? 'Notes saved.' : 'Failed to save notes.';
     if (result.ok) recipe.cook_notes = textarea.value;
+  });
+
+  // Save nutrition & cost
+  container.querySelector<HTMLButtonElement>('#save-nutrition')!.addEventListener('click', async () => {
+    const val = (id: string) => {
+      const el = container.querySelector<HTMLInputElement>(id)!;
+      return el.value ? Number(el.value) : null;
+    };
+    const statusEl = container.querySelector<HTMLParagraphElement>('#nutrition-status')!;
+    const servingSize = container.querySelector<HTMLInputElement>('#edit-serving-size')!.value.trim() || null;
+
+    const result = await updateRecipe(recipe.id, {
+      calories_per_serving: val('#edit-calories'),
+      protein_per_serving: val('#edit-protein'),
+      total_fat: val('#edit-fat'),
+      saturated_fat: val('#edit-sat-fat'),
+      cholesterol: val('#edit-cholesterol'),
+      sodium: val('#edit-sodium'),
+      total_carbohydrate: val('#edit-carbs'),
+      dietary_fiber: val('#edit-fiber'),
+      sugars: val('#edit-sugars'),
+      cost_per_portion: val('#edit-cost'),
+      serving_size: servingSize,
+    });
+
+    if (result.ok) {
+      statusEl.textContent = 'Saved!';
+      statusEl.style.color = 'var(--primary)';
+    } else {
+      statusEl.textContent = 'Failed to save.';
+    }
   });
 
   // Add to shopping list
