@@ -2,7 +2,8 @@ import { signOut } from '../lib/auth';
 import { renderAddViaLink } from './addViaLink';
 import { renderAddViaClaude } from './addViaClaude';
 import { renderRecipeForm } from './recipeForm';
-import { listRecipes, type RecipeRecord } from '../lib/recipeStore';
+import { renderRecipeDetail } from './recipeDetail';
+import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl } from '../lib/photoStorage';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
 
@@ -74,6 +75,21 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     }
 
     main.innerHTML = `<div class="recipe-grid">${recipes.map(renderRecipeCard).join('')}</div>`;
+
+    // Attach click handlers to cards
+    main.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
+      card.addEventListener('click', async () => {
+        const id = card.dataset.id;
+        if (!id) return;
+        const recipe = await getRecipe(id);
+        if (recipe) {
+          renderRecipeDetail(main, recipe, {
+            onBack: () => showBrowse(),
+            onDeleted: () => showBrowse(),
+          });
+        }
+      });
+    });
   }
 
   container.querySelector<HTMLButtonElement>('#nav-browse')!.addEventListener('click', () => showBrowse());
@@ -96,7 +112,7 @@ function renderRecipeCard(recipe: RecipeRecord): string {
     : '<span class="unrated">Not rated</span>';
 
   return `
-    <article class="recipe-card">
+    <article class="recipe-card" data-id="${recipe.id}" role="button" tabindex="0">
       ${photoHtml}
       <div class="card-body">
         <h3>${escapeHtml(recipe.name)}</h3>

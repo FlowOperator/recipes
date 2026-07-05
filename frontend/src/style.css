@@ -427,3 +427,106 @@ pre {
   padding: 48px 16px;
   color: var(--text);
 }
+
+.recipe-card {
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.recipe-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.recipe-detail {
+  text-align: left;
+}
+
+.detail-photo {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.detail-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.stars {
+  color: #f5a623;
+  font-size: 18px;
+}
+
+.star-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.star-btn {
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--text);
+  margin: 8px 0;
+}
+
+.detail-nutrition {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text);
+  margin: 4px 0;
+}
+
+.detail-categories {
+  margin: 8px 0;
+}
+
+.detail-ingredients {
+  padding-left: 20px;
+  font-size: 15px;
+}
+
+.detail-method {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.recipe-detail textarea {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text-h);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.detail-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.danger-action {
+  background: rgba(192, 54, 44, 0.1);
+  color: var(--error);
+  border-color: rgba(192, 54, 44, 0.3);
+}
