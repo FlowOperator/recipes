@@ -108,7 +108,8 @@ describe('mapSchemaOrgRecipeToFields property: only present fields are set', () 
             typeof partialRecipe.name === 'string' && partialRecipe.name.trim().length > 0
           );
           expect(fields.ingredients !== undefined).toBe(
-            Array.isArray(partialRecipe.recipeIngredient) && partialRecipe.recipeIngredient.length > 0
+            Array.isArray(partialRecipe.recipeIngredient) &&
+              partialRecipe.recipeIngredient.filter(i => typeof i === 'string' && i.trim().length > 0).length > 0
           );
           expect(fields.method !== undefined).toBe(
             typeof partialRecipe.recipeInstructions === 'string' &&
