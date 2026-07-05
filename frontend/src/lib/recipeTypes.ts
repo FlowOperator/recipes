@@ -17,4 +17,8 @@ export interface ExtractedRecipeFields {
   servings?: number;
   caloriesPerServing?: number;
   proteinPerServing?: number;
+  costPerServing?: number;
+  mealType?: string[];
+  course?: string[];
+  category?: string[];
 }

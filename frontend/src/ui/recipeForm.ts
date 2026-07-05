@@ -20,15 +20,15 @@ export function renderRecipeForm(
   editId?: string
 ): void {
   const categoriesHtml = VALID_CATEGORIES.map(
-    (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" /> ${cat}</label>`
+    (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" ${prefill?.mealType?.includes(cat) ? 'checked' : ''} /> ${cat}</label>`
   ).join('');
 
   const coursesHtml = COURSES.map(
-    (c) => `<label class="category-chip"><input type="checkbox" name="courses" value="${c}" /> ${c}</label>`
+    (c) => `<label class="category-chip"><input type="checkbox" name="courses" value="${c}" ${prefill?.course?.includes(c) ? 'checked' : ''} /> ${c}</label>`
   ).join('');
 
   const foodCatsHtml = FOOD_CATEGORIES.map(
-    (c) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${c}" /> ${c}</label>`
+    (c) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${c}" ${prefill?.category?.includes(c) ? 'checked' : ''} /> ${c}</label>`
   ).join('');
 
   const ingredientsText = prefill?.ingredients
@@ -65,18 +65,18 @@ export function renderRecipeForm(
         <div class="form-row">
           <div>
             <label for="rf-calories">Calories per serving</label>
-            <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="" />
+            <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="${prefill?.caloriesPerServing ?? ''}" />
           </div>
           <div>
             <label for="rf-protein">Protein per serving (g)</label>
-            <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="" />
+            <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="${prefill?.proteinPerServing ?? ''}" />
           </div>
         </div>
 
         <div class="form-row">
           <div>
             <label for="rf-cost">Cost per portion (£)</label>
-            <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="" />
+            <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="${prefill?.costPerServing ?? ''}" />
           </div>
           <div></div>
         </div>
