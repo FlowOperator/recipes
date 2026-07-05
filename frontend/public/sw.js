@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recipe-site-v1';
+const CACHE_NAME = 'recipe-site-v2';
 
 // Precache app shell on install (Requirement 17.2)
 self.addEventListener('install', (event) => {
@@ -11,7 +11,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
 });
 
 // Cache-first for app shell; network-first for API/data (Requirement 17.3)
