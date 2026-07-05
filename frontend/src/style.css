@@ -857,3 +857,33 @@ pre {
   color: var(--text-on-primary);
   border-color: var(--primary);
 }
+
+.add-tag-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.add-tag-row input {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.add-tag-btn {
+  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--text-on-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

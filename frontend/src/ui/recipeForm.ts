@@ -83,17 +83,20 @@ export function renderRecipeForm(
 
         <fieldset class="categories-fieldset">
           <legend>Meal type * (select at least one)</legend>
-          <div class="categories-grid">${categoriesHtml}</div>
+          <div class="categories-grid" id="mealtype-grid">${categoriesHtml}</div>
+          <div class="add-tag-row"><input id="add-mealtype" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="mealtype">+</button></div>
         </fieldset>
 
         <fieldset class="categories-fieldset">
           <legend>Course</legend>
-          <div class="categories-grid">${coursesHtml}</div>
+          <div class="categories-grid" id="course-grid">${coursesHtml}</div>
+          <div class="add-tag-row"><input id="add-course" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="course">+</button></div>
         </fieldset>
 
         <fieldset class="categories-fieldset">
           <legend>Category</legend>
-          <div class="categories-grid">${foodCatsHtml}</div>
+          <div class="categories-grid" id="foodcat-grid">${foodCatsHtml}</div>
+          <div class="add-tag-row"><input id="add-foodcat" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="foodcat">+</button></div>
         </fieldset>
 
         <p id="rf-error" class="signin-error" role="alert" aria-live="polite"></p>
@@ -107,6 +110,27 @@ export function renderRecipeForm(
 
   const form = container.querySelector<HTMLFormElement>('#recipe-form')!;
   const errorEl = container.querySelector<HTMLParagraphElement>('#rf-error')!;
+
+  // Handle "Add new" buttons for custom tags
+  container.querySelectorAll<HTMLButtonElement>('.add-tag-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target!;
+      const inputId = target === 'mealtype' ? 'add-mealtype' : target === 'course' ? 'add-course' : 'add-foodcat';
+      const gridId = target === 'mealtype' ? 'mealtype-grid' : target === 'course' ? 'course-grid' : 'foodcat-grid';
+      const inputName = target === 'mealtype' ? 'categories' : target === 'course' ? 'courses' : 'foodcats';
+
+      const input = container.querySelector<HTMLInputElement>(`#${inputId}`)!;
+      const value = input.value.trim().toLowerCase();
+      if (!value) return;
+
+      const grid = container.querySelector<HTMLElement>(`#${gridId}`)!;
+      const chip = document.createElement('label');
+      chip.className = 'category-chip';
+      chip.innerHTML = `<input type="checkbox" name="${inputName}" value="${value}" checked /> ${value}`;
+      grid.appendChild(chip);
+      input.value = '';
+    });
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
