@@ -203,3 +203,68 @@ pre {
   text-align: left;
   font-size: 14px;
 }
+
+.add-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.add-nav button {
+  font-size: 14px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.add-nav button.nav-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.add-via-claude {
+  text-align: left;
+}
+
+.add-via-claude details {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.add-via-claude summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.add-via-claude form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-via-claude label {
+  font-size: 14px;
+  color: var(--text-h);
+  margin-top: 10px;
+}
+
+.add-via-claude textarea {
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.add-via-claude button[type='submit'] {
+  margin-top: 12px;
+}
