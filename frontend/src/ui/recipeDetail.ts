@@ -1,6 +1,7 @@
 import type { RecipeRecord } from '../lib/recipeStore';
 import { updateRecipe, deleteRecipe } from '../lib/recipeStore';
 import { getPhotoUrl } from '../lib/photoStorage';
+import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
 
 export interface RecipeDetailCallbacks {
@@ -13,10 +14,26 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
   const photoUrl = getPhotoUrl(recipe.photo_path);
   const photoHtml = photoUrl
     ? `<img src="${photoUrl}" alt="${esc(recipe.name)}" class="detail-photo" />`
-    : `<div class="detail-photo placeholder">🍽️</div>`;
+    : `<div class="detail-photo placeholder" id="detail-photo-placeholder">🍽️</div>`;
 
   const stars = renderStars(recipe.rating);
   const ratio = computeRatio(recipe.calories_per_serving, recipe.protein_per_serving);
+
+  // Load Pexels image asynchronously for detail view if no uploaded photo
+  if (!photoUrl) {
+    getPexelsImageUrl(recipe.name).then((url) => {
+      if (url) {
+        const placeholder = container.querySelector('#detail-photo-placeholder');
+        if (placeholder) {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = recipe.name;
+          img.className = 'detail-photo';
+          placeholder.replaceWith(img);
+        }
+      }
+    });
+  }
 
   container.innerHTML = `
     <section class="recipe-detail">

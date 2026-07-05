@@ -53,7 +53,7 @@ export async function deleteRecipePhoto(recipeId: string): Promise<boolean> {
 
 /**
  * Returns the public URL for a recipe's photo. If no photo was manually
- * uploaded, returns null and the UI will show a generated placeholder.
+ * uploaded, returns null and the UI will show a Pexels image or emoji placeholder.
  */
 export function getPhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null;

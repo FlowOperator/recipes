@@ -6,6 +6,7 @@ import { renderRecipeDetail } from './recipeDetail';
 import { renderShoppingListView } from './shoppingListView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
+import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
 import { VALID_CATEGORIES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
@@ -171,6 +172,21 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           }
         });
       });
+
+      // Lazy-load Pexels images for cards without uploaded photos
+      el.querySelectorAll<HTMLElement>('.card-photo.placeholder').forEach(async (placeholder) => {
+        const name = placeholder.dataset.recipeName;
+        if (!name) return;
+        const url = await getPexelsImageUrl(name);
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = name;
+          img.className = 'card-photo';
+          img.loading = 'lazy';
+          placeholder.replaceWith(img);
+        }
+      });
     }
 
     attachCardListeners(main.querySelector<HTMLElement>('#recipe-list')!);
@@ -208,7 +224,7 @@ function renderRecipeCard(recipe: RecipeRecord): string {
   const emoji = getPlaceholderEmoji(recipe.filter_categories);
   const photoHtml = photoUrl
     ? `<img src="${photoUrl}" alt="${escapeAttr(recipe.name)}" class="card-photo" loading="lazy" />`
-    : `<div class="card-photo placeholder">${emoji}</div>`;
+    : `<div class="card-photo placeholder" data-recipe-name="${escapeAttr(recipe.name)}">${emoji}</div>`;
 
   const stars = recipe.rating
     ? '★'.repeat(recipe.rating) + '☆'.repeat(5 - recipe.rating)
