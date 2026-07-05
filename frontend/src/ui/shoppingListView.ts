@@ -6,12 +6,9 @@ import {
   clearAllItems,
   type ShoppingListItem,
 } from '../lib/shoppingListStore';
+import { getAisle, AISLE_ORDER } from '../lib/aisleCategories';
 import { formatShoppingListForExport } from '../lib/shoppingList';
 
-/**
- * Renders the Shopping List tab — items grouped by source recipe,
- * with checkboxes (strikethrough when done), delete, and export.
- */
 export function renderShoppingListView(container: HTMLElement): void {
   render();
 
@@ -28,46 +25,57 @@ export function renderShoppingListView(container: HTMLElement): void {
       return;
     }
 
-    // Group items by their source recipes
-    const grouped = groupBySource(items);
+    // Group items by aisle
+    const byAisle = new Map<string, ShoppingListItem[]>();
+    for (const item of items) {
+      const aisle = getAisle(item.name);
+      if (!byAisle.has(aisle)) byAisle.set(aisle, []);
+      byAisle.get(aisle)!.push(item);
+    }
+
     const uncheckedCount = items.filter(i => !i.checked).length;
 
     let html = `
       <section class="sl-view">
         <h2>Shopping List <span class="sl-count">(${uncheckedCount} remaining)</span></h2>
-        <div class="sl-groups">
     `;
 
-    for (const [source, sourceItems] of grouped) {
-      html += `<div class="sl-group">`;
-      html += `<h3 class="sl-group-title">${escapeHtml(source)}</h3>`;
-      for (const item of sourceItems) {
+    // Render aisles in standard supermarket order
+    for (const aisle of AISLE_ORDER) {
+      const aisleItems = byAisle.get(aisle);
+      if (!aisleItems || aisleItems.length === 0) continue;
+
+      html += `<div class="sl-aisle">`;
+      html += `<h3 class="sl-aisle-title">${aisle}</h3>`;
+
+      for (const item of aisleItems) {
         const checkedClass = item.checked ? 'sl-item-checked' : '';
         const checkedAttr = item.checked ? 'checked' : '';
-        const display = formatItemDisplay(item);
-        const sources = item.sourceRecipes.length > 1
-          ? `<span class="sl-item-sources">${item.sourceRecipes.join(', ')}</span>`
-          : '';
+        const display = formatItemLine(item);
+        const sources = item.sourceRecipes.join(', ');
+
         html += `
           <div class="sl-item ${checkedClass}" data-id="${item.id}">
             <label class="sl-item-label">
               <input type="checkbox" class="sl-check" ${checkedAttr} />
-              <span class="sl-item-text">${escapeHtml(display)}</span>
+              <div class="sl-item-content">
+                <span class="sl-item-text">${escapeHtml(display)}</span>
+                <span class="sl-item-sources">${escapeHtml(sources)}</span>
+              </div>
             </label>
-            ${sources}
             <button class="sl-item-delete" title="Remove">✕</button>
           </div>
         `;
       }
+
       html += `</div>`;
     }
 
     html += `
-        </div>
         <div class="sl-bottom-actions">
-          <button id="sl-clear-checked" type="button" class="btn-secondary">Clear checked</button>
+          <button id="sl-clear-checked" type="button" class="btn-secondary">Clear done</button>
           <button id="sl-clear-all" type="button" class="danger-action">Clear all</button>
-          <button id="sl-export" type="button" class="btn-primary">Copy to clipboard</button>
+          <button id="sl-export" type="button" class="btn-primary">Copy list</button>
         </div>
         <p id="sl-status" class="form-error" role="alert"></p>
       </section>
@@ -129,17 +137,7 @@ export function renderShoppingListView(container: HTMLElement): void {
   }
 }
 
-function groupBySource(items: ShoppingListItem[]): Map<string, ShoppingListItem[]> {
-  const map = new Map<string, ShoppingListItem[]>();
-  for (const item of items) {
-    const key = item.sourceRecipes[0] || 'Other';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  return map;
-}
-
-function formatItemDisplay(item: ShoppingListItem): string {
+function formatItemLine(item: ShoppingListItem): string {
   const parts: string[] = [];
   if (item.quantity != null) parts.push(String(item.quantity));
   if (item.unit) parts.push(item.unit);

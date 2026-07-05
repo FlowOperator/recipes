@@ -687,22 +687,20 @@ pre {
 .sl-view h2 { font-size: 18px; margin-bottom: 12px; }
 .sl-count { font-size: 14px; color: var(--text-secondary); font-weight: 400; }
 
-.sl-groups { margin-bottom: 16px; }
+.sl-aisle { margin-bottom: 16px; }
 
-.sl-group { margin-bottom: 16px; }
-
-.sl-group-title {
+.sl-aisle-title {
   font-size: 14px;
   color: var(--primary-dark);
   font-weight: 600;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
+  margin-bottom: 4px;
+  padding: 6px 0;
   border-bottom: 2px solid var(--primary-light);
 }
 
 .sl-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   gap: 8px;
@@ -710,7 +708,7 @@ pre {
 
 .sl-item-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   flex: 1;
   cursor: pointer;
@@ -721,11 +719,20 @@ pre {
   width: 20px;
   height: 20px;
   min-width: 20px;
+  margin-top: 2px;
   accent-color: var(--primary);
+}
+
+.sl-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .sl-item-text {
   font-size: 15px;
+  color: var(--text-primary);
 }
 
 .sl-item-checked .sl-item-text {
@@ -736,7 +743,7 @@ pre {
 .sl-item-sources {
   font-size: 11px;
   color: var(--primary);
-  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .sl-item-delete {
@@ -746,6 +753,7 @@ pre {
   cursor: pointer;
   color: var(--text-secondary);
   padding: 4px 8px;
+  margin-top: 2px;
 }
 
 .sl-item-delete:hover { color: var(--error); }
@@ -757,7 +765,7 @@ pre {
   flex-wrap: wrap;
 }
 
-.sl-bottom-actions button { flex: 1; min-width: 100px; }
+.sl-bottom-actions button { flex: 1; min-width: 80px; }
 
 .card-nutrition {
   display: flex;
