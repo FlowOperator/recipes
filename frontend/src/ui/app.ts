@@ -102,8 +102,8 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
         <div class="search-row">
           <input id="ingredient-search" type="text" placeholder="Search by ingredient..." maxlength="100" />
         </div>
-        <div class="search-row" style="margin-top:6px">
-          <input id="protein-filter" type="number" min="0" placeholder="Min protein per serving (g)" step="1" />
+        <div class="sort-row">
+          <button id="sort-protein" type="button" class="sort-btn">Sort: Protein/calorie ↓</button>
         </div>
         <details class="filter-panel">
           <summary>Filter by category</summary>
@@ -117,18 +117,24 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
     let filteredRecipes = recipes;
 
+    let sortByProtein = false;
+
     function applyFilters() {
       const selectedCats = Array.from(main.querySelectorAll<HTMLInputElement>('.filter-chips input:checked')).map(cb => cb.value);
       const searchTerm = (main.querySelector<HTMLInputElement>('#ingredient-search')!).value;
-      const minProtein = (main.querySelector<HTMLInputElement>('#protein-filter')!).value;
 
       filteredRecipes = filterByCategories(recipes, selectedCats);
       if (searchTerm.trim().length > 0) {
         filteredRecipes = searchByIngredient(filteredRecipes, searchTerm);
       }
-      if (minProtein && Number(minProtein) > 0) {
-        const minVal = Number(minProtein);
-        filteredRecipes = filteredRecipes.filter(r => (r.protein_per_serving ?? 0) >= minVal);
+      if (sortByProtein) {
+        filteredRecipes = [...filteredRecipes].sort((a, b) => {
+          const ratioA = (a.calories_per_serving && a.calories_per_serving > 0 && a.protein_per_serving != null)
+            ? a.protein_per_serving / a.calories_per_serving : 0;
+          const ratioB = (b.calories_per_serving && b.calories_per_serving > 0 && b.protein_per_serving != null)
+            ? b.protein_per_serving / b.calories_per_serving : 0;
+          return ratioB - ratioA;
+        });
       }
 
       const listEl = main.querySelector<HTMLElement>('#recipe-list')!;
@@ -142,7 +148,13 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
     main.querySelectorAll('.filter-chips input').forEach(cb => cb.addEventListener('change', applyFilters));
     main.querySelector<HTMLInputElement>('#ingredient-search')!.addEventListener('input', applyFilters);
-    main.querySelector<HTMLInputElement>('#protein-filter')!.addEventListener('input', applyFilters);
+    main.querySelector<HTMLButtonElement>('#sort-protein')!.addEventListener('click', () => {
+      sortByProtein = !sortByProtein;
+      const btn = main.querySelector<HTMLButtonElement>('#sort-protein')!;
+      btn.classList.toggle('sort-active', sortByProtein);
+      btn.textContent = sortByProtein ? 'Sort: Protein/calorie ↓ ✓' : 'Sort: Protein/calorie ↓';
+      applyFilters();
+    });
 
     function attachCardListeners(el: HTMLElement) {
       el.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
