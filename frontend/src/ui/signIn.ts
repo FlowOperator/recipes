@@ -16,7 +16,7 @@ export function renderSignIn(container: HTMLElement, onSuccess: () => void): voi
         <label for="signin-password">Password</label>
         <input id="signin-password" name="password" type="password" autocomplete="current-password" required />
 
-        <button type="submit">Sign in</button>
+        <button type="submit" class="btn-primary">Sign in</button>
         <p id="signin-error" class="signin-error" role="alert" aria-live="polite"></p>
       </form>
     </section>

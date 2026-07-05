@@ -14,16 +14,17 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   container.innerHTML = `
     <section class="app-shell">
       <header class="app-header">
-        <h1>Recipes</h1>
+        <h1>🍽️ Recipes</h1>
         <button id="signout-button" type="button">Sign out</button>
       </header>
-      <nav class="add-nav">
-        <button id="nav-browse" type="button" class="nav-active">My recipes</button>
-        <button id="nav-link" type="button">+ Link</button>
-        <button id="nav-claude" type="button">+ Claude AI</button>
-        <button id="nav-manual" type="button">+ Manual</button>
-      </nav>
       <main id="app-main"></main>
+      <nav class="bottom-nav">
+        <button id="nav-browse" type="button" class="nav-active"><span class="nav-icon">📖</span>Recipes</button>
+        <button id="nav-link" type="button"><span class="nav-icon">🔗</span>Link</button>
+        <button id="nav-claude" type="button"><span class="nav-icon">🤖</span>AI</button>
+        <button id="nav-manual" type="button"><span class="nav-icon">✏️</span>Add</button>
+        <button id="nav-shop" type="button"><span class="nav-icon">🛒</span>Shop</button>
+      </nav>
     </section>
   `;
 
@@ -33,7 +34,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   });
 
   const main = container.querySelector<HTMLElement>('#app-main')!;
-  const navButtons = container.querySelectorAll<HTMLButtonElement>('.add-nav button');
+  const navButtons = container.querySelectorAll<HTMLButtonElement>('.bottom-nav button');
 
   function setActiveNav(activeId: string) {
     navButtons.forEach((btn) => btn.classList.toggle('nav-active', btn.id === activeId));
@@ -215,6 +216,11 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   container.querySelector<HTMLButtonElement>('#nav-link')!.addEventListener('click', showLinkView);
   container.querySelector<HTMLButtonElement>('#nav-claude')!.addEventListener('click', showClaudeView);
   container.querySelector<HTMLButtonElement>('#nav-manual')!.addEventListener('click', showManualView);
+  container.querySelector<HTMLButtonElement>('#nav-shop')!.addEventListener('click', async () => {
+    setActiveNav('nav-shop');
+    const recipes = await listRecipes();
+    showShoppingList(recipes);
+  });
 
   // Default view
   showBrowse();
