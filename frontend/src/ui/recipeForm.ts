@@ -1,6 +1,6 @@
 import type { ExtractedRecipeFields, RecipeIngredient } from '../lib/recipeTypes';
 import { validateRecipeForm, VALID_CATEGORIES, COURSES, FOOD_CATEGORIES } from '../lib/recipeValidation';
-import { createRecipe } from '../lib/recipeStore';
+import { createRecipe, updateRecipe } from '../lib/recipeStore';
 
 export interface RecipeFormCallbacks {
   onSaved: () => void;
@@ -16,7 +16,8 @@ export function renderRecipeForm(
   container: HTMLElement,
   prefill: ExtractedRecipeFields | null,
   sourceLink: string | null,
-  callbacks: RecipeFormCallbacks
+  callbacks: RecipeFormCallbacks,
+  editId?: string
 ): void {
   const categoriesHtml = VALID_CATEGORIES.map(
     (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" /> ${cat}</label>`
@@ -36,7 +37,7 @@ export function renderRecipeForm(
 
   container.innerHTML = `
     <section class="recipe-form">
-      <h2>${prefill ? 'Review and save recipe' : 'Add recipe manually'}</h2>
+      <h2>${editId ? 'Edit recipe' : prefill ? 'Review and save recipe' : 'Add recipe manually'}</h2>
       <form id="recipe-form" novalidate>
         <label for="rf-name">Name *</label>
         <input id="rf-name" name="name" type="text" maxlength="200" value="${escapeAttr(prefill?.name ?? '')}" required />
@@ -122,18 +123,31 @@ export function renderRecipeForm(
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
 
-    const result = await createRecipe({
-      name: formData.name.trim(),
-      source_link: formData.sourceLink || null,
-      ingredients: formData.ingredients,
-      method: formData.method,
-      time_to_cook_minutes: formData.timeToCookMinutes,
-      servings: formData.servings,
-      filter_categories: formData.filterCategories,
-      calories_per_serving: formData.caloriesPerServing,
-      protein_per_serving: formData.proteinPerServing,
-      cost_per_portion: formData.costPerPortion,
-    });
+    const result = editId
+      ? await updateRecipe(editId, {
+          name: formData.name.trim(),
+          source_link: formData.sourceLink || null,
+          ingredients: formData.ingredients,
+          method: formData.method,
+          time_to_cook_minutes: formData.timeToCookMinutes,
+          servings: formData.servings,
+          filter_categories: formData.filterCategories,
+          calories_per_serving: formData.caloriesPerServing,
+          protein_per_serving: formData.proteinPerServing,
+          cost_per_portion: formData.costPerPortion,
+        })
+      : await createRecipe({
+          name: formData.name.trim(),
+          source_link: formData.sourceLink || null,
+          ingredients: formData.ingredients,
+          method: formData.method,
+          time_to_cook_minutes: formData.timeToCookMinutes,
+          servings: formData.servings,
+          filter_categories: formData.filterCategories,
+          calories_per_serving: formData.caloriesPerServing,
+          protein_per_serving: formData.proteinPerServing,
+          cost_per_portion: formData.costPerPortion,
+        });
 
     submitBtn.disabled = false;
     submitBtn.textContent = prefill ? 'Save recipe' : 'Add recipe';

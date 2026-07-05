@@ -7,7 +7,6 @@ import { renderShoppingListView } from './shoppingListView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
-import { mergeIngredients, applyPantryExclusion, formatShoppingListForExport, type ShoppingListItem } from '../lib/shoppingList';
 import { VALID_CATEGORIES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
 
@@ -69,6 +68,21 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     showRecipeForm(null, null);
   }
 
+  function showEditForm(recipe: RecipeRecord) {
+    const prefill = {
+      name: recipe.name,
+      sourceLink: recipe.source_link ?? undefined,
+      ingredients: recipe.ingredients,
+      method: recipe.method,
+      timeToCookMinutes: recipe.time_to_cook_minutes ?? undefined,
+      servings: recipe.servings ?? undefined,
+    };
+    renderRecipeForm(main, prefill, recipe.source_link, {
+      onSaved: () => showBrowse(),
+      onCancel: () => showBrowse(),
+    }, recipe.id);
+  }
+
   async function showBrowse() {
     setActiveNav('nav-browse');
     main.innerHTML = '<p>Loading recipes...</p>';
@@ -88,6 +102,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
         <div class="search-row">
           <input id="ingredient-search" type="text" placeholder="Search by ingredient..." maxlength="100" />
         </div>
+        <div class="search-row" style="margin-top:6px">
+          <input id="protein-filter" type="number" min="0" placeholder="Min protein per serving (g)" step="1" />
+        </div>
         <details class="filter-panel">
           <summary>Filter by category</summary>
           <div class="filter-chips">${filterHtml}</div>
@@ -95,7 +112,6 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       </div>
       <div id="recipe-list" class="recipe-grid">${recipes.map(renderRecipeCard).join('')}</div>
       <div class="shopping-section">
-        <button id="build-list-btn" type="button">Build shopping list from selected</button>
       </div>
     `;
 
@@ -104,10 +120,15 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     function applyFilters() {
       const selectedCats = Array.from(main.querySelectorAll<HTMLInputElement>('.filter-chips input:checked')).map(cb => cb.value);
       const searchTerm = (main.querySelector<HTMLInputElement>('#ingredient-search')!).value;
+      const minProtein = (main.querySelector<HTMLInputElement>('#protein-filter')!).value;
 
       filteredRecipes = filterByCategories(recipes, selectedCats);
       if (searchTerm.trim().length > 0) {
         filteredRecipes = searchByIngredient(filteredRecipes, searchTerm);
+      }
+      if (minProtein && Number(minProtein) > 0) {
+        const minVal = Number(minProtein);
+        filteredRecipes = filteredRecipes.filter(r => (r.protein_per_serving ?? 0) >= minVal);
       }
 
       const listEl = main.querySelector<HTMLElement>('#recipe-list')!;
@@ -121,6 +142,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
     main.querySelectorAll('.filter-chips input').forEach(cb => cb.addEventListener('change', applyFilters));
     main.querySelector<HTMLInputElement>('#ingredient-search')!.addEventListener('input', applyFilters);
+    main.querySelector<HTMLInputElement>('#protein-filter')!.addEventListener('input', applyFilters);
 
     function attachCardListeners(el: HTMLElement) {
       el.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
@@ -132,6 +154,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             renderRecipeDetail(main, recipe, {
               onBack: () => showBrowse(),
               onDeleted: () => showBrowse(),
+              onEdit: (r) => showEditForm(r),
             });
           }
         });
@@ -139,78 +162,6 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     }
 
     attachCardListeners(main.querySelector<HTMLElement>('#recipe-list')!);
-
-    // Shopping list builder
-    main.querySelector<HTMLButtonElement>('#build-list-btn')!.addEventListener('click', () => {
-      showShoppingList(filteredRecipes);
-    });
-  }
-
-  function showShoppingList(recipes: RecipeRecord[]) {
-    if (recipes.length === 0) {
-      main.innerHTML = '<p>Select at least one recipe first (use filters on browse page).</p><button id="sl-back" type="button">Back</button>';
-      main.querySelector<HTMLButtonElement>('#sl-back')!.addEventListener('click', () => showBrowse());
-      return;
-    }
-
-    const pantryDefaults = ['salt', 'pepper', 'oil'];
-    const merged = mergeIngredients(recipes.map(r => r.ingredients));
-    let items = applyPantryExclusion(merged, pantryDefaults);
-
-    function renderList() {
-      const listHtml = items.map((item, i) => `
-        <li>${formatItemDisplay(item)} <button class="remove-item" data-index="${i}">✕</button></li>
-      `).join('');
-
-      main.innerHTML = `
-        <section class="shopping-list-view">
-          <button id="sl-back" type="button" class="secondary-action">← Back to recipes</button>
-          <h2>Shopping List (${items.length} items)</h2>
-          <ul class="sl-items">${listHtml}</ul>
-          <div class="sl-add">
-            <input id="sl-add-input" type="text" placeholder="Add an item..." maxlength="200" />
-            <button id="sl-add-btn" type="button">Add</button>
-          </div>
-          <button id="sl-export" type="button">Copy to clipboard</button>
-          <p id="sl-status" role="alert"></p>
-        </section>
-      `;
-
-      main.querySelector<HTMLButtonElement>('#sl-back')!.addEventListener('click', () => showBrowse());
-
-      main.querySelectorAll<HTMLButtonElement>('.remove-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          items.splice(Number(btn.dataset.index), 1);
-          renderList();
-        });
-      });
-
-      main.querySelector<HTMLButtonElement>('#sl-add-btn')!.addEventListener('click', () => {
-        const input = main.querySelector<HTMLInputElement>('#sl-add-input')!;
-        const val = input.value.trim();
-        if (val && val.length <= 200) {
-          items.push({ name: val, quantity: null, unit: null, source: 'manual' });
-          renderList();
-        }
-      });
-
-      main.querySelector<HTMLButtonElement>('#sl-export')!.addEventListener('click', async () => {
-        const statusEl = main.querySelector<HTMLParagraphElement>('#sl-status')!;
-        if (items.length === 0) {
-          statusEl.textContent = 'Nothing to export.';
-          return;
-        }
-        const text = formatShoppingListForExport(items);
-        try {
-          await navigator.clipboard.writeText(text);
-          statusEl.textContent = 'Copied to clipboard!';
-        } catch {
-          statusEl.textContent = 'Export failed. Try again.';
-        }
-      });
-    }
-
-    renderList();
   }
 
   container.querySelector<HTMLButtonElement>('#nav-browse')!.addEventListener('click', () => showBrowse());
@@ -238,12 +189,6 @@ function buildNutritionBadge(recipe: RecipeRecord): string {
   }
 
   return `<div class="card-nutrition">${parts.map(p => `<span>${p}</span>`).join('')}</div>`;
-}
-
-function formatItemDisplay(item: ShoppingListItem): string {
-  if (item.quantity != null && item.unit) return `${item.quantity} ${item.unit} ${item.name}`;
-  if (item.quantity != null) return `${item.quantity} ${item.name}`;
-  return item.name;
 }
 
 function renderRecipeCard(recipe: RecipeRecord): string {

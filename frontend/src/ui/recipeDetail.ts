@@ -6,6 +6,7 @@ import { renderAddToShoppingList } from './addToShoppingList';
 export interface RecipeDetailCallbacks {
   onBack: () => void;
   onDeleted: () => void;
+  onEdit: (recipe: RecipeRecord) => void;
 }
 
 export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord, callbacks: RecipeDetailCallbacks): void {
@@ -20,6 +21,7 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
   container.innerHTML = `
     <section class="recipe-detail">
       <button id="detail-back" type="button" class="secondary-action">← Back</button>
+      <button id="detail-edit" type="button" class="btn-secondary">✏️ Edit recipe</button>
       ${photoHtml}
       <h2>${esc(recipe.name)}</h2>
       ${recipe.source_link ? `<a href="${esc(recipe.source_link)}" target="_blank" rel="noopener">Source</a>` : ''}
@@ -113,6 +115,11 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
 
   // Back
   container.querySelector<HTMLButtonElement>('#detail-back')!.addEventListener('click', callbacks.onBack);
+
+  // Edit
+  container.querySelector<HTMLButtonElement>('#detail-edit')!.addEventListener('click', () => {
+    callbacks.onEdit(recipe);
+  });
 
   // Rating
   container.querySelectorAll<HTMLButtonElement>('.star-btn').forEach((btn) => {
