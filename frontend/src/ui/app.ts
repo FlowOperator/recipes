@@ -8,7 +8,7 @@ import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
-import { VALID_CATEGORIES } from '../lib/recipeValidation';
+import { VALID_CATEGORIES, COURSES, FOOD_CATEGORIES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
 
 export function renderApp(container: HTMLElement, onSignOut: () => void): void {
@@ -70,6 +70,14 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   }
 
   function showEditForm(recipe: RecipeRecord) {
+    // Split filter_categories back into the three groups for the form checkboxes
+    const allTags = recipe.filter_categories || [];
+    const mealTypes = allTags.filter(t => VALID_CATEGORIES.includes(t));
+    const courses = allTags.filter(t => COURSES.includes(t));
+    const foodCats = allTags.filter(t => FOOD_CATEGORIES.includes(t));
+    // Any custom tags that don't match built-in lists go to mealType (they'll render as custom chips)
+    const customTags = allTags.filter(t => !VALID_CATEGORIES.includes(t) && !COURSES.includes(t) && !FOOD_CATEGORIES.includes(t));
+
     const prefill = {
       name: recipe.name,
       sourceLink: recipe.source_link ?? undefined,
@@ -77,6 +85,12 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       method: recipe.method,
       timeToCookMinutes: recipe.time_to_cook_minutes ?? undefined,
       servings: recipe.servings ?? undefined,
+      caloriesPerServing: recipe.calories_per_serving ?? undefined,
+      proteinPerServing: recipe.protein_per_serving ?? undefined,
+      costPerServing: recipe.cost_per_portion ?? undefined,
+      mealType: [...mealTypes, ...customTags],
+      course: courses,
+      category: foodCats,
     };
     renderRecipeForm(main, prefill, recipe.source_link, {
       onSaved: () => showBrowse(),

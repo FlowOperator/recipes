@@ -200,6 +200,13 @@ function extractFormData(form: HTMLFormElement) {
 
   const categories = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="categories"]:checked'))
     .map((cb) => cb.value);
+  const courses = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="courses"]:checked'))
+    .map((cb) => cb.value);
+  const foodCats = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="foodcats"]:checked'))
+    .map((cb) => cb.value);
+
+  // Combine all tags into filter_categories for storage
+  const allCategories = [...categories, ...courses, ...foodCats];
 
   const ingredients: RecipeIngredient[] = ingredientsRaw
     .split('\n')
@@ -217,7 +224,7 @@ function extractFormData(form: HTMLFormElement) {
     caloriesPerServing: caloriesRaw ? Number(caloriesRaw) : null,
     proteinPerServing: proteinRaw ? Number(proteinRaw) : null,
     costPerPortion: costRaw ? Number(costRaw) : null,
-    filterCategories: categories,
+    filterCategories: allCategories,
   };
 }
 
