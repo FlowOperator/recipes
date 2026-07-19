@@ -22,13 +22,28 @@ export function renderRecipeForm(
   const categoriesHtml = VALID_CATEGORIES.map(
     (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" ${prefill?.mealType?.includes(cat) ? 'checked' : ''} /> ${cat}</label>`
   ).join('');
+  // Render custom meal-type tags that aren't in the built-in list
+  const customMealTags = (prefill?.mealType ?? []).filter(t => !VALID_CATEGORIES.includes(t));
+  const customMealHtml = customMealTags.map(
+    (t) => `<label class="category-chip"><input type="checkbox" name="categories" value="${t}" checked /> ${t}</label>`
+  ).join('');
 
   const coursesHtml = COURSES.map(
     (c) => `<label class="category-chip"><input type="checkbox" name="courses" value="${c}" ${prefill?.course?.includes(c) ? 'checked' : ''} /> ${c}</label>`
   ).join('');
+  // Render custom course tags that aren't in the built-in list
+  const customCourseTags = (prefill?.course ?? []).filter(t => !COURSES.includes(t));
+  const customCourseHtml = customCourseTags.map(
+    (t) => `<label class="category-chip"><input type="checkbox" name="courses" value="${t}" checked /> ${t}</label>`
+  ).join('');
 
   const foodCatsHtml = FOOD_CATEGORIES.map(
     (c) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${c}" ${prefill?.category?.includes(c) ? 'checked' : ''} /> ${c}</label>`
+  ).join('');
+  // Render custom food category tags that aren't in the built-in list
+  const customFoodTags = (prefill?.category ?? []).filter(t => !FOOD_CATEGORIES.includes(t));
+  const customFoodHtml = customFoodTags.map(
+    (t) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${t}" checked /> ${t}</label>`
   ).join('');
 
   const ingredientsText = prefill?.ingredients
@@ -83,19 +98,19 @@ export function renderRecipeForm(
 
         <fieldset class="categories-fieldset">
           <legend>Meal type * (select at least one)</legend>
-          <div class="categories-grid" id="mealtype-grid">${categoriesHtml}</div>
+          <div class="categories-grid" id="mealtype-grid">${categoriesHtml}${customMealHtml}</div>
           <div class="add-tag-row"><input id="add-mealtype" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="mealtype">+</button></div>
         </fieldset>
 
         <fieldset class="categories-fieldset">
           <legend>Course</legend>
-          <div class="categories-grid" id="course-grid">${coursesHtml}</div>
+          <div class="categories-grid" id="course-grid">${coursesHtml}${customCourseHtml}</div>
           <div class="add-tag-row"><input id="add-course" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="course">+</button></div>
         </fieldset>
 
         <fieldset class="categories-fieldset">
           <legend>Category</legend>
-          <div class="categories-grid" id="foodcat-grid">${foodCatsHtml}</div>
+          <div class="categories-grid" id="foodcat-grid">${foodCatsHtml}${customFoodHtml}</div>
           <div class="add-tag-row"><input id="add-foodcat" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="foodcat">+</button></div>
         </fieldset>
 
