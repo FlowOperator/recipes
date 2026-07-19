@@ -69,9 +69,14 @@ export function validateRecipeForm(data: RecipeFormData): ValidationError[] {
   if (data.filterCategories.length === 0) {
     errors.push({ field: 'filterCategories', message: 'At least one category is required.' });
   }
+  // Allow tags from all built-in lists plus custom tags (any non-empty string up to 50 chars)
   for (const cat of data.filterCategories) {
-    if (!VALID_CATEGORIES.includes(cat)) {
-      errors.push({ field: 'filterCategories', message: `"${cat}" is not a valid category.` });
+    if (cat.trim().length === 0) {
+      errors.push({ field: 'filterCategories', message: 'Empty tag is not allowed.' });
+      break;
+    }
+    if (cat.length > 50) {
+      errors.push({ field: 'filterCategories', message: `Tag "${cat}" exceeds 50 characters.` });
       break;
     }
   }
