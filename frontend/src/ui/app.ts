@@ -15,23 +15,52 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   container.innerHTML = `
     <section class="app-shell">
       <header class="app-header">
-        <h1>🍽️ Recipes</h1>
-        <button id="signout-button" type="button">Sign out</button>
+        <div class="app-header-brand">
+          <div class="app-header-logo">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 11a8 8 0 0016 0" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M4 11h16M12 11V5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h1>Nick's Picks</h1>
+        </div>
+        <div class="app-header-actions">
+          <button id="search-toggle" type="button" class="header-btn" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M20 20l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </header>
       <main id="app-main"></main>
       <nav class="bottom-nav">
-        <button id="nav-browse" type="button" class="nav-active"><span class="nav-icon">📖</span>Recipes</button>
-        <button id="nav-link" type="button"><span class="nav-icon">🔗</span>Link</button>
-        <button id="nav-claude" type="button"><span class="nav-icon">🤖</span>AI</button>
-        <button id="nav-manual" type="button"><span class="nav-icon">✏️</span>Add</button>
-        <button id="nav-shop" type="button"><span class="nav-icon">🛒</span>Shop</button>
+        <button id="nav-browse" type="button" class="nav-active">
+          <span class="nav-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9h5v-6h4v6h5v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Home
+        </button>
+        <button id="nav-shop" type="button">
+          <span class="nav-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 8h16l-1.4 11a2 2 0 01-2 1.7H7.4a2 2 0 01-2-1.7L4 8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 8V6a4 4 0 018 0v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Shopping
+        </button>
+        <button id="nav-add" type="button" class="nav-add-btn">
+          <span class="nav-add-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+          Add
+        </button>
+        <button id="nav-planner" type="button">
+          <span class="nav-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Planner
+        </button>
+        <button id="nav-settings" type="button">
+          <span class="nav-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          Settings
+        </button>
       </nav>
     </section>
   `;
 
-  container.querySelector<HTMLButtonElement>('#signout-button')!.addEventListener('click', async () => {
-    await signOut();
-    onSignOut();
+  container.querySelector<HTMLButtonElement>('#search-toggle')!.addEventListener('click', () => {
+    // Focus the search input if we're on browse, otherwise go to browse
+    if (!main.querySelector('#ingredient-search')) {
+      showBrowse();
+    }
+    setTimeout(() => {
+      main.querySelector<HTMLInputElement>('#ingredient-search')?.focus();
+    }, 50);
   });
 
   const main = container.querySelector<HTMLElement>('#app-main')!;
@@ -48,8 +77,51 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     });
   }
 
+  function showAddMenu() {
+    setActiveNav('nav-add');
+    main.innerHTML = `
+      <section class="add-menu-view" style="padding-top:12px;">
+        <h2 style="font:700 26px/1.2 var(--font-heading);color:var(--text-dark);margin-bottom:6px">Add a recipe</h2>
+        <p style="font:400 14px/1.4 var(--font-body);color:var(--text-mid);margin-bottom:20px">Choose how you'd like to bring it in</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button id="add-ai" type="button" class="add-option-card">
+            <span class="add-option-icon" style="background:var(--terracotta)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" fill="#fff"/></svg>
+            </span>
+            <span class="add-option-text">
+              <strong>AI Import</strong>
+              <small>Paste a photo, video link, or description — AI fills in the details</small>
+            </span>
+          </button>
+          <button id="add-link" type="button" class="add-option-card">
+            <span class="add-option-icon" style="background:var(--olive)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+            <span class="add-option-text">
+              <strong>From a link</strong>
+              <small>Paste a URL and auto-extract the recipe</small>
+            </span>
+          </button>
+          <button id="add-manual" type="button" class="add-option-card">
+            <span class="add-option-icon" style="background:var(--text-muted)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="add-option-text">
+              <strong>Manual entry</strong>
+              <small>Type it in yourself from scratch</small>
+            </span>
+          </button>
+        </div>
+      </section>
+    `;
+
+    container.querySelector<HTMLButtonElement>('#add-ai')!.addEventListener('click', showClaudeView);
+    container.querySelector<HTMLButtonElement>('#add-link')!.addEventListener('click', showLinkView);
+    container.querySelector<HTMLButtonElement>('#add-manual')!.addEventListener('click', showManualView);
+  }
+
   function showLinkView() {
-    setActiveNav('nav-link');
+    setActiveNav('nav-add');
     renderAddViaLink(main, {
       onExtracted: (fields, sourceLink) => showRecipeForm(fields, sourceLink),
       onManualEntry: () => showRecipeForm(null, null),
@@ -57,7 +129,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   }
 
   function showClaudeView() {
-    setActiveNav('nav-claude');
+    setActiveNav('nav-add');
     renderAddViaClaude(main, {
       onExtracted: (fields) => showRecipeForm(fields, null),
       onManualEntry: () => showRecipeForm(null, null),
@@ -65,8 +137,35 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   }
 
   function showManualView() {
-    setActiveNav('nav-manual');
+    setActiveNav('nav-add');
     showRecipeForm(null, null);
+  }
+
+  function showPlannerView() {
+    setActiveNav('nav-planner');
+    main.innerHTML = `
+      <section class="planner-view">
+        <h2>Meal Planner</h2>
+        <p>🚧 In development — coming soon!</p>
+      </section>
+    `;
+  }
+
+  function showSettingsView() {
+    setActiveNav('nav-settings');
+    main.innerHTML = `
+      <section class="settings-view">
+        <h2>Settings</h2>
+        <div class="settings-item">
+          <span>Account</span>
+          <button id="settings-signout" type="button">Sign out</button>
+        </div>
+      </section>
+    `;
+    container.querySelector<HTMLButtonElement>('#settings-signout')!.addEventListener('click', async () => {
+      await signOut();
+      onSignOut();
+    });
   }
 
   function showEditForm(recipe: RecipeRecord) {
@@ -241,13 +340,13 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   }
 
   container.querySelector<HTMLButtonElement>('#nav-browse')!.addEventListener('click', () => showBrowse());
-  container.querySelector<HTMLButtonElement>('#nav-link')!.addEventListener('click', showLinkView);
-  container.querySelector<HTMLButtonElement>('#nav-claude')!.addEventListener('click', showClaudeView);
-  container.querySelector<HTMLButtonElement>('#nav-manual')!.addEventListener('click', showManualView);
+  container.querySelector<HTMLButtonElement>('#nav-add')!.addEventListener('click', showAddMenu);
   container.querySelector<HTMLButtonElement>('#nav-shop')!.addEventListener('click', async () => {
     setActiveNav('nav-shop');
     renderShoppingListView(main);
   });
+  container.querySelector<HTMLButtonElement>('#nav-planner')!.addEventListener('click', showPlannerView);
+  container.querySelector<HTMLButtonElement>('#nav-settings')!.addEventListener('click', showSettingsView);
 
   // Default view
   showBrowse();

@@ -7,7 +7,7 @@ import { signIn } from '../lib/auth';
 export function renderSignIn(container: HTMLElement, onSuccess: () => void): void {
   container.innerHTML = `
     <section class="signin">
-      <h1>Recipe Site</h1>
+      <h1>Nick's Picks</h1>
       <p class="signin-subtitle">Sign in to view your recipes</p>
       <form id="signin-form" novalidate>
         <label for="signin-email">Email</label>
