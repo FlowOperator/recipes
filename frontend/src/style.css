@@ -1184,3 +1184,38 @@ pre {
   opacity: 0.6;
   font-weight: 400;
 }
+
+/* === SERVING ADJUSTER === */
+.serving-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 12px;
+  font: 500 15px/1 var(--font-body);
+  color: var(--text-dark);
+}
+
+.serving-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--cream-surface);
+  font: 600 18px/1 var(--font-body);
+  color: var(--terracotta);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.serving-btn:hover {
+  background: var(--terracotta);
+  color: #fff;
+  border-color: var(--terracotta);
+}
+
+.serving-base {
+  font: 400 12px/1 var(--font-body);
+  color: var(--text-light);
+}

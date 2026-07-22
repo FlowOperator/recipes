@@ -3,6 +3,7 @@ import { updateRecipe, deleteRecipe } from '../lib/recipeStore';
 import { getPhotoUrl } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
+import { scaleIngredients, formatQuantity } from '../lib/ingredientScaling';
 
 export interface RecipeDetailCallbacks {
   onBack: () => void;
@@ -18,6 +19,8 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
 
   const stars = renderStars(recipe.rating);
   const ratio = computeRatio(recipe.calories_per_serving, recipe.protein_per_serving);
+  const baseServings = recipe.servings ?? 1;
+  let currentServings = baseServings;
 
   // Load Pexels image asynchronously for detail view if no uploaded photo
   if (!photoUrl) {
@@ -80,8 +83,14 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
       <div class="detail-categories">${recipe.filter_categories.map(c => `<span class="tag">${c}</span>`).join('')}</div>
 
       <h3>Ingredients</h3>
-      <ul class="detail-ingredients">
-        ${recipe.ingredients.map(i => `<li>${formatIngredient(i)}</li>`).join('')}
+      <div class="serving-adjuster">
+        <button id="servings-down" type="button" class="serving-btn">−</button>
+        <span id="servings-display">${baseServings} servings</span>
+        <button id="servings-up" type="button" class="serving-btn">+</button>
+        ${recipe.servings ? `<span class="serving-base">(recipe is for ${recipe.servings})</span>` : ''}
+      </div>
+      <ul class="detail-ingredients" id="ingredients-list">
+        ${renderIngredientsList(recipe.ingredients, baseServings, currentServings)}
       </ul>
       <button id="add-to-sl" type="button" class="btn-primary" style="margin-top:8px">🛒 Add to shopping list</button>
 
@@ -160,9 +169,33 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
     }
   });
 
-  // Add to shopping list
+  // Serving adjuster
+  function updateIngredientsDisplay() {
+    const list = container.querySelector<HTMLElement>('#ingredients-list')!;
+    list.innerHTML = renderIngredientsList(recipe.ingredients, baseServings, currentServings);
+    const display = container.querySelector<HTMLElement>('#servings-display')!;
+    display.textContent = `${currentServings} serving${currentServings !== 1 ? 's' : ''}`;
+  }
+
+  container.querySelector<HTMLButtonElement>('#servings-down')!.addEventListener('click', () => {
+    if (currentServings > 1) {
+      currentServings--;
+      updateIngredientsDisplay();
+    }
+  });
+
+  container.querySelector<HTMLButtonElement>('#servings-up')!.addEventListener('click', () => {
+    if (currentServings < 99) {
+      currentServings++;
+      updateIngredientsDisplay();
+    }
+  });
+
+  // Add to shopping list (uses scaled quantities)
   container.querySelector<HTMLButtonElement>('#add-to-sl')!.addEventListener('click', () => {
-    renderAddToShoppingList(container, recipe, () => {
+    const scaledIngredients = scaleIngredients(recipe.ingredients, baseServings, currentServings);
+    const scaledRecipe = { ...recipe, ingredients: scaledIngredients };
+    renderAddToShoppingList(container, scaledRecipe, () => {
       renderRecipeDetail(container, recipe, callbacks);
     });
   });
@@ -191,10 +224,19 @@ function computeRatio(cal: number | null, protein: number | null): string {
 
 function formatIngredient(i: { name: string; quantity: number | null; unit: string | null }): string {
   const parts: string[] = [];
-  if (i.quantity != null) parts.push(String(i.quantity));
+  if (i.quantity != null) parts.push(formatQuantity(i.quantity));
   if (i.unit) parts.push(i.unit);
   parts.push(i.name);
   return parts.join(' ');
+}
+
+function renderIngredientsList(
+  ingredients: { name: string; quantity: number | null; unit: string | null }[],
+  baseServings: number,
+  currentServings: number
+): string {
+  const scaled = scaleIngredients(ingredients, baseServings, currentServings);
+  return scaled.map(i => `<li>${formatIngredient(i)}</li>`).join('');
 }
 
 function esc(s: string): string {
