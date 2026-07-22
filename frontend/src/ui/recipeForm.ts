@@ -8,9 +8,8 @@ export interface RecipeFormCallbacks {
 }
 
 /**
- * Renders the Recipe_Form for creating a new recipe. Can be pre-filled from
- * extraction results (link/Claude import) or left blank for manual entry.
- * Implements Requirements 3, 4, and 11.3-11.4.
+ * Renders a tabbed recipe edit form inspired by Recipe Keeper.
+ * Tabs: Overview | Ingredients | Directions | Notes | Nutrition
  */
 export async function renderRecipeForm(
   container: HTMLElement,
@@ -19,145 +18,217 @@ export async function renderRecipeForm(
   callbacks: RecipeFormCallbacks,
   editId?: string
 ): Promise<void> {
-  // Fetch all existing tags across recipes to show custom tags globally
+  // Fetch global custom tags
   const allExistingTags = await getAllTags();
-  const customMealTags = allExistingTags.filter(t => !VALID_CATEGORIES.includes(t) && !COURSES.includes(t) && !FOOD_CATEGORIES.includes(t));
-  // For now all custom tags show in the Category section (most natural home for food items)
-  const customFoodTagsGlobal = [...new Set(customMealTags)];
+  const customFoodTagsGlobal = [...new Set(
+    allExistingTags.filter(t =>
+      !VALID_CATEGORIES.includes(t) && !COURSES.includes(t) && !FOOD_CATEGORIES.includes(t)
+    )
+  )];
 
-  const categoriesHtml = VALID_CATEGORIES.map(
-    (cat) => `<label class="category-chip"><input type="checkbox" name="categories" value="${cat}" ${prefill?.mealType?.includes(cat) ? 'checked' : ''} /> ${cat}</label>`
-  ).join('');
-  // No custom meal type tags — all custom tags go to Category section
-
-  const coursesHtml = COURSES.map(
-    (c) => `<label class="category-chip"><input type="checkbox" name="courses" value="${c}" ${prefill?.course?.includes(c) ? 'checked' : ''} /> ${c}</label>`
-  ).join('');
-
-  const foodCatsHtml = FOOD_CATEGORIES.map(
-    (c) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${c}" ${prefill?.category?.includes(c) ? 'checked' : ''} /> ${c}</label>`
-  ).join('');
-  // Show all globally-known custom tags in Category (checked only if this recipe has them)
-  const currentRecipeCategories = prefill?.category ?? [];
-  const globalCustomHtml = customFoodTagsGlobal.map(
-    (t) => `<label class="category-chip"><input type="checkbox" name="foodcats" value="${t}" ${currentRecipeCategories.includes(t) ? 'checked' : ''} /> ${t}</label>`
-  ).join('');
+  const currentMealTypes = prefill?.mealType ?? [];
+  const currentCourses = prefill?.course ?? [];
+  const currentCategories = prefill?.category ?? [];
 
   const ingredientsText = prefill?.ingredients
     ? prefill.ingredients.map(formatIngredient).join('\n')
     : '';
 
   container.innerHTML = `
-    <section class="recipe-form">
-      <h2>${editId ? 'Edit recipe' : prefill ? 'Review and save recipe' : 'Add recipe manually'}</h2>
+    <section class="edit-form-shell">
+      <div class="edit-form-header">
+        <button id="ef-close" type="button" class="ef-close-btn" aria-label="Close">✕</button>
+        <h2>${editId ? 'Edit recipe' : prefill ? 'Review recipe' : 'Add recipe'}</h2>
+        <button id="ef-save" type="button" class="ef-save-btn">Save</button>
+      </div>
+      <div class="edit-form-tabs">
+        <button class="ef-tab active" data-tab="overview">Overview</button>
+        <button class="ef-tab" data-tab="ingredients">Ingredients</button>
+        <button class="ef-tab" data-tab="directions">Directions</button>
+        <button class="ef-tab" data-tab="notes">Notes</button>
+        <button class="ef-tab" data-tab="nutrition">Nutrition</button>
+      </div>
       <form id="recipe-form" novalidate>
-        <label for="rf-name">Name *</label>
-        <input id="rf-name" name="name" type="text" maxlength="200" value="${escapeAttr(prefill?.name ?? '')}" required />
+        <div class="ef-panel active" data-panel="overview">
+          <input id="rf-name" name="name" type="text" maxlength="200" value="${escapeAttr(prefill?.name ?? '')}" placeholder="Recipe name *" class="ef-title-input" required />
 
-        <label for="rf-source">Source link</label>
-        <input id="rf-source" name="sourceLink" type="url" maxlength="2048" value="${escapeAttr(sourceLink ?? prefill?.sourceLink ?? '')}" />
-
-        <label for="rf-ingredients">Ingredients (one per line, e.g. "200g flour")</label>
-        <textarea id="rf-ingredients" name="ingredients" rows="8">${escapeHtml(ingredientsText)}</textarea>
-
-        <label for="rf-method">Method</label>
-        <textarea id="rf-method" name="method" rows="8" maxlength="10000">${escapeHtml(prefill?.method ?? '')}</textarea>
-
-        <div class="form-row">
-          <div>
-            <label for="rf-time">Time to cook (minutes)</label>
-            <input id="rf-time" name="timeToCookMinutes" type="number" min="1" max="1440" value="${prefill?.timeToCookMinutes ?? ''}" />
-          </div>
-          <div>
-            <label for="rf-servings">Servings</label>
-            <input id="rf-servings" name="servings" type="number" min="1" max="100" value="${prefill?.servings ?? ''}" />
+          <div class="ef-row-list">
+            <div class="ef-row" id="row-courses">
+              <span class="ef-row-label">Courses</span>
+              <span class="ef-row-value" id="courses-display">${currentCourses.join(', ') || '—'}</span>
+              <span class="ef-row-chevron">›</span>
+            </div>
+            <div class="ef-row" id="row-categories">
+              <span class="ef-row-label">Categories</span>
+              <span class="ef-row-value" id="categories-display">${[...currentCategories, ...currentMealTypes].join(', ') || '—'}</span>
+              <span class="ef-row-chevron">›</span>
+            </div>
+            <div class="ef-row">
+              <span class="ef-row-label">Source</span>
+              <input id="rf-source" name="sourceLink" type="url" maxlength="2048" value="${escapeAttr(sourceLink ?? prefill?.sourceLink ?? '')}" placeholder="URL" class="ef-row-input" />
+            </div>
+            <div class="ef-row">
+              <span class="ef-row-label">Servings</span>
+              <input id="rf-servings" name="servings" type="number" min="1" max="100" value="${prefill?.servings ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+            </div>
+            <div class="ef-row">
+              <span class="ef-row-label">Cook time</span>
+              <input id="rf-time" name="timeToCookMinutes" type="number" min="1" max="1440" value="${prefill?.timeToCookMinutes ?? ''}" placeholder="mins" class="ef-row-input ef-row-short" />
+            </div>
+            <div class="ef-row">
+              <span class="ef-row-label">Cost/portion</span>
+              <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="${prefill?.costPerServing ?? ''}" placeholder="£" class="ef-row-input ef-row-short" />
+            </div>
           </div>
         </div>
 
-        <div class="form-row">
-          <div>
-            <label for="rf-calories">Calories per serving</label>
-            <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="${prefill?.caloriesPerServing ?? ''}" />
-          </div>
-          <div>
-            <label for="rf-protein">Protein per serving (g)</label>
-            <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="${prefill?.proteinPerServing ?? ''}" />
+        <div class="ef-panel" data-panel="ingredients">
+          <textarea id="rf-ingredients" name="ingredients" rows="16" placeholder="One ingredient per line&#10;e.g. 200g flour&#10;2 tbsp olive oil&#10;Salt and pepper">${escapeHtml(ingredientsText)}</textarea>
+        </div>
+
+        <div class="ef-panel" data-panel="directions">
+          <textarea id="rf-method" name="method" rows="16" maxlength="10000" placeholder="Write or paste the method here...">${escapeHtml(prefill?.method ?? '')}</textarea>
+        </div>
+
+        <div class="ef-panel" data-panel="notes">
+          <textarea id="rf-notes" name="notes" rows="10" maxlength="5000" placeholder="Cook notes, tips, variations..."></textarea>
+        </div>
+
+        <div class="ef-panel" data-panel="nutrition">
+          <p class="ef-section-label">Amount per serving</p>
+          <div class="ef-row-list">
+            <div class="ef-row">
+              <span class="ef-row-label">Calories</span>
+              <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="${prefill?.caloriesPerServing ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+            </div>
+            <div class="ef-row">
+              <span class="ef-row-label">Protein (g)</span>
+              <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="${prefill?.proteinPerServing ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+            </div>
           </div>
         </div>
 
-        <div class="form-row">
-          <div>
-            <label for="rf-cost">Cost per portion (£)</label>
-            <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="${prefill?.costPerServing ?? ''}" />
+        <!-- Hidden tag pickers (shown as modals when row is tapped) -->
+        <div id="tag-picker-overlay" class="ef-overlay hidden">
+          <div class="ef-picker">
+            <div class="ef-picker-header">
+              <button type="button" id="picker-close" class="ef-close-btn">✕</button>
+              <h3 id="picker-title">Select</h3>
+            </div>
+            <div id="picker-chips" class="categories-grid"></div>
+            <div class="add-tag-row"><input id="picker-new" type="text" placeholder="Add new..." maxlength="50" /><button type="button" id="picker-add-btn" class="add-tag-btn">+</button></div>
           </div>
-          <div></div>
         </div>
 
-        <fieldset class="categories-fieldset">
-          <legend>Meal type * (select at least one)</legend>
-          <div class="categories-grid" id="mealtype-grid">${categoriesHtml}</div>
-          <div class="add-tag-row"><input id="add-mealtype" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="mealtype">+</button></div>
-        </fieldset>
-
-        <fieldset class="categories-fieldset">
-          <legend>Course</legend>
-          <div class="categories-grid" id="course-grid">${coursesHtml}</div>
-          <div class="add-tag-row"><input id="add-course" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="course">+</button></div>
-        </fieldset>
-
-        <fieldset class="categories-fieldset">
-          <legend>Category</legend>
-          <div class="categories-grid" id="foodcat-grid">${foodCatsHtml}${globalCustomHtml}</div>
-          <div class="add-tag-row"><input id="add-foodcat" type="text" placeholder="Add new..." maxlength="50" /><button type="button" class="add-tag-btn" data-target="foodcat">+</button></div>
-        </fieldset>
-
-        <p id="rf-error" class="signin-error" role="alert" aria-live="polite"></p>
-        <div class="form-actions">
-          <button type="submit">${prefill ? 'Save recipe' : 'Add recipe'}</button>
-          <button type="button" id="rf-cancel" class="secondary-action">Cancel</button>
-        </div>
+        <p id="rf-error" class="form-error" role="alert" aria-live="polite"></p>
       </form>
     </section>
   `;
 
-  const form = container.querySelector<HTMLFormElement>('#recipe-form')!;
-  const errorEl = container.querySelector<HTMLParagraphElement>('#rf-error')!;
+  // === Tab switching ===
+  const tabs = container.querySelectorAll<HTMLButtonElement>('.ef-tab');
+  const panels = container.querySelectorAll<HTMLElement>('.ef-panel');
 
-  // Handle "Add new" buttons for custom tags
-  container.querySelectorAll<HTMLButtonElement>('.add-tag-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.target!;
-      const inputId = target === 'mealtype' ? 'add-mealtype' : target === 'course' ? 'add-course' : 'add-foodcat';
-      const gridId = target === 'mealtype' ? 'mealtype-grid' : target === 'course' ? 'course-grid' : 'foodcat-grid';
-      const inputName = target === 'mealtype' ? 'categories' : target === 'course' ? 'courses' : 'foodcats';
-
-      const input = container.querySelector<HTMLInputElement>(`#${inputId}`)!;
-      const value = input.value.trim().toLowerCase();
-      if (!value) return;
-
-      const grid = container.querySelector<HTMLElement>(`#${gridId}`)!;
-      const chip = document.createElement('label');
-      chip.className = 'category-chip';
-      chip.innerHTML = `<input type="checkbox" name="${inputName}" value="${value}" checked /> ${value}`;
-      grid.appendChild(chip);
-      input.value = '';
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab!;
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+      panels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
     });
   });
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  // === Tag picker logic ===
+  const overlay = container.querySelector<HTMLElement>('#tag-picker-overlay')!;
+  const pickerChips = container.querySelector<HTMLElement>('#picker-chips')!;
+  const pickerTitle = container.querySelector<HTMLElement>('#picker-title')!;
+  const pickerNewInput = container.querySelector<HTMLInputElement>('#picker-new')!;
+
+  // Track selected tags in state
+  const selectedCourses = new Set(currentCourses);
+  const selectedCategories = new Set([...currentMealTypes, ...currentCategories]);
+  // Add global custom tags to the category pool for display
+  const allCategoryOptions = [...new Set([...VALID_CATEGORIES, ...FOOD_CATEGORIES, ...customFoodTagsGlobal])];
+
+  let activePicker: 'courses' | 'categories' | null = null;
+
+  function openPicker(type: 'courses' | 'categories') {
+    activePicker = type;
+    overlay.classList.remove('hidden');
+    if (type === 'courses') {
+      pickerTitle.textContent = 'Courses';
+      renderPickerChips(COURSES, selectedCourses);
+    } else {
+      pickerTitle.textContent = 'Categories';
+      renderPickerChips(allCategoryOptions, selectedCategories);
+    }
+  }
+
+  function renderPickerChips(options: string[], selected: Set<string>) {
+    pickerChips.innerHTML = options.map(opt =>
+      `<label class="category-chip"><input type="checkbox" value="${opt}" ${selected.has(opt) ? 'checked' : ''} /> ${opt}</label>`
+    ).join('');
+    pickerChips.querySelectorAll<HTMLInputElement>('input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selected.add(cb.value);
+        else selected.delete(cb.value);
+        updateRowDisplays();
+      });
+    });
+  }
+
+  function updateRowDisplays() {
+    container.querySelector<HTMLElement>('#courses-display')!.textContent =
+      [...selectedCourses].join(', ') || '—';
+    container.querySelector<HTMLElement>('#categories-display')!.textContent =
+      [...selectedCategories].join(', ') || '—';
+  }
+
+  container.querySelector<HTMLElement>('#row-courses')!.addEventListener('click', () => openPicker('courses'));
+  container.querySelector<HTMLElement>('#row-categories')!.addEventListener('click', () => openPicker('categories'));
+
+  container.querySelector<HTMLButtonElement>('#picker-close')!.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    activePicker = null;
+  });
+
+  container.querySelector<HTMLButtonElement>('#picker-add-btn')!.addEventListener('click', () => {
+    const val = pickerNewInput.value.trim().toLowerCase();
+    if (!val) return;
+    if (activePicker === 'courses') {
+      selectedCourses.add(val);
+      if (!COURSES.includes(val)) COURSES.push(val); // temporarily extend for this session
+      renderPickerChips(COURSES, selectedCourses);
+    } else if (activePicker === 'categories') {
+      selectedCategories.add(val);
+      if (!allCategoryOptions.includes(val)) allCategoryOptions.push(val);
+      renderPickerChips(allCategoryOptions, selectedCategories);
+    }
+    pickerNewInput.value = '';
+    updateRowDisplays();
+  });
+
+  // === Close / Cancel ===
+  container.querySelector<HTMLButtonElement>('#ef-close')!.addEventListener('click', callbacks.onCancel);
+
+  // === Save ===
+  container.querySelector<HTMLButtonElement>('#ef-save')!.addEventListener('click', async () => {
+    const errorEl = container.querySelector<HTMLParagraphElement>('#rf-error')!;
     errorEl.textContent = '';
 
-    const formData = extractFormData(form);
+    const form = container.querySelector<HTMLFormElement>('#recipe-form')!;
+    const formData = extractFormData(form, selectedCourses, selectedCategories);
     const errors = validateRecipeForm(formData);
     if (errors.length > 0) {
-      errorEl.textContent = errors.map((e) => e.message).join(' ');
+      errorEl.textContent = errors.map(e => e.message).join(' ');
+      // Switch to overview tab to show error
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'overview'));
+      panels.forEach(p => p.classList.toggle('active', p.dataset.panel === 'overview'));
       return;
     }
 
-    const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Saving...';
+    const saveBtn = container.querySelector<HTMLButtonElement>('#ef-save')!;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '...';
 
     const result = editId
       ? await updateRecipe(editId, {
@@ -185,21 +256,19 @@ export async function renderRecipeForm(
           cost_per_portion: formData.costPerPortion,
         });
 
-    submitBtn.disabled = false;
-    submitBtn.textContent = prefill ? 'Save recipe' : 'Add recipe';
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
 
     if (!result.ok) {
-      errorEl.textContent = result.error ?? 'Failed to save recipe.';
+      errorEl.textContent = result.error ?? 'Failed to save.';
       return;
     }
 
     callbacks.onSaved();
   });
-
-  container.querySelector<HTMLButtonElement>('#rf-cancel')!.addEventListener('click', callbacks.onCancel);
 }
 
-function extractFormData(form: HTMLFormElement) {
+function extractFormData(form: HTMLFormElement, courses: Set<string>, categories: Set<string>) {
   const name = (form.elements.namedItem('name') as HTMLInputElement).value;
   const sourceLink = (form.elements.namedItem('sourceLink') as HTMLInputElement).value;
   const ingredientsRaw = (form.elements.namedItem('ingredients') as HTMLTextAreaElement).value;
@@ -210,15 +279,8 @@ function extractFormData(form: HTMLFormElement) {
   const proteinRaw = (form.elements.namedItem('proteinPerServing') as HTMLInputElement).value;
   const costRaw = (form.elements.namedItem('costPerPortion') as HTMLInputElement).value;
 
-  const categories = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="categories"]:checked'))
-    .map((cb) => cb.value);
-  const courses = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="courses"]:checked'))
-    .map((cb) => cb.value);
-  const foodCats = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="foodcats"]:checked'))
-    .map((cb) => cb.value);
-
-  // Combine all tags into filter_categories for storage
-  const allCategories = [...categories, ...courses, ...foodCats];
+  // Combine courses + categories into filter_categories for storage
+  const filterCategories = [...courses, ...categories];
 
   const ingredients: RecipeIngredient[] = ingredientsRaw
     .split('\n')
@@ -236,7 +298,7 @@ function extractFormData(form: HTMLFormElement) {
     caloriesPerServing: caloriesRaw ? Number(caloriesRaw) : null,
     proteinPerServing: proteinRaw ? Number(proteinRaw) : null,
     costPerPortion: costRaw ? Number(costRaw) : null,
-    filterCategories: allCategories,
+    filterCategories,
   };
 }
 

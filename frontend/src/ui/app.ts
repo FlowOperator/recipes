@@ -8,7 +8,7 @@ import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
-import { VALID_CATEGORIES, COURSES, FOOD_CATEGORIES } from '../lib/recipeValidation';
+import { VALID_CATEGORIES, COURSES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
 
 export function renderApp(container: HTMLElement, onSignOut: () => void): void {
@@ -173,14 +173,10 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   }
 
   function showEditForm(recipe: RecipeRecord) {
-    // Split filter_categories back into the three groups for the form checkboxes
+    // Split filter_categories back into courses vs categories
     const allTags = recipe.filter_categories || [];
-    const mealTypes = allTags.filter(t => VALID_CATEGORIES.includes(t));
     const courses = allTags.filter(t => COURSES.includes(t));
-    const foodCats = allTags.filter(t => FOOD_CATEGORIES.includes(t));
-    // Custom tags that don't match any built-in list go to category (food category)
-    // since that's the most general grouping for custom items like "curry", "turkey", etc.
-    const customTags = allTags.filter(t => !VALID_CATEGORIES.includes(t) && !COURSES.includes(t) && !FOOD_CATEGORIES.includes(t));
+    const categories = allTags.filter(t => !COURSES.includes(t));
 
     const prefill = {
       name: recipe.name,
@@ -192,9 +188,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       caloriesPerServing: recipe.calories_per_serving ?? undefined,
       proteinPerServing: recipe.protein_per_serving ?? undefined,
       costPerServing: recipe.cost_per_portion ?? undefined,
-      mealType: mealTypes,
+      mealType: categories.filter(t => VALID_CATEGORIES.includes(t)),
       course: courses,
-      category: [...foodCats, ...customTags],
+      category: categories.filter(t => !VALID_CATEGORIES.includes(t)),
     };
     renderRecipeForm(main, prefill, recipe.source_link, {
       onSaved: () => showBrowse(),
