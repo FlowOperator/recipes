@@ -1678,3 +1678,230 @@ pre {
   color: var(--text-dark);
   width: 100%;
 }
+
+/* === RECIPE DETAIL REDESIGN === */
+.rd { position: relative; }
+
+.rd-hero {
+  width: calc(100% + 36px);
+  margin: -0px -18px 0;
+  height: 220px;
+  overflow: hidden;
+  background: var(--chip-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rd-hero-placeholder { font-size: 56px; }
+
+.rd-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rd-photo-actions {
+  position: absolute;
+  top: 180px;
+  right: 0;
+  z-index: 5;
+}
+
+.rd-upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--cream-surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: var(--shadow);
+}
+
+.rd-content { padding-top: 12px; }
+
+.rd-back-btn {
+  font: 500 14px/1 var(--font-body);
+  color: var(--terracotta);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.rd-title {
+  font: 700 24px/1.2 var(--font-heading);
+  color: var(--text-dark);
+  margin: 0 0 8px;
+}
+
+.rd-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.rd-meta-item {
+  font: 400 13px/1 var(--font-body);
+  color: var(--text-light);
+}
+
+.rd-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.rd-stars { color: var(--star); font-size: 18px; }
+
+.rd-star-btns {
+  display: flex;
+  gap: 3px;
+}
+
+.rd-star-btns .star-btn {
+  font: 500 11px/1 var(--font-body);
+  padding: 4px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--cream-surface);
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.rd-star-btns .star-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+.rd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.rd-nutrition-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.rd-source-link {
+  font: 500 13px/1 var(--font-body);
+  color: var(--terracotta);
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.rd-action-bar {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+
+.rd-action-bar button {
+  flex: none;
+  font: 500 13px/1 var(--font-body);
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--cream-surface);
+  color: var(--text-dark);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rd-action-bar button:hover {
+  background: var(--terracotta);
+  color: #fff;
+  border-color: var(--terracotta);
+}
+
+.rd-section {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.rd-section h3 {
+  font: 600 16px/1.2 var(--font-heading);
+  color: var(--text-dark);
+  margin: 0 0 10px;
+}
+
+.rd-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.rd-section-header h3 { margin: 0; }
+
+.rd-ingredients {
+  padding-left: 18px;
+  font: 400 15px/1.8 var(--font-body);
+  color: var(--text-dark);
+  list-style: none;
+}
+
+.rd-ingredients li::before {
+  content: "•";
+  color: var(--terracotta);
+  margin-right: 8px;
+}
+
+.rd-method {
+  font: 400 15px/1.7 var(--font-body);
+  color: var(--text-dark);
+}
+
+.rd-section textarea {
+  width: 100%;
+  font: 400 14px/1.5 var(--font-body);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--cream-surface);
+  color: var(--text-dark);
+  padding: 10px 14px;
+  resize: vertical;
+  outline: none;
+}
+
+.rd-section textarea:focus { border-color: var(--terracotta); }
+
+.rd-save-btn {
+  font: 500 13px/1 var(--font-body);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--terracotta);
+  color: #fff;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.rd-nutrition-section {
+  border: none;
+  padding-top: 16px;
+}
+
+.rd-nutrition-section summary {
+  font: 500 14px/1 var(--font-body);
+  color: var(--terracotta);
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.rd-danger-zone {
+  padding: 24px 0 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
