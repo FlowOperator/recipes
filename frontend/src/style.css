@@ -1907,7 +1907,42 @@ pre {
 }
 
 /* === SWIPE ACTIONS === */
+.swipe-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.swipe-action {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  font: 600 14px/1 var(--font-body);
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+}
+
+.swipe-action-left {
+  justify-content: flex-end;
+  padding-right: 20px;
+  background: #e74c3c;
+  color: #fff;
+}
+
+.swipe-action-right {
+  justify-content: flex-start;
+  padding-left: 20px;
+  background: var(--olive);
+  color: #fff;
+}
+
 .recipe-card {
+  position: relative;
+  z-index: 1;
   touch-action: pan-y;
   will-change: transform;
 }

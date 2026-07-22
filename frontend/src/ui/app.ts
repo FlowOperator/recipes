@@ -349,7 +349,8 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     main.querySelector<HTMLSelectElement>('#filter-stars')!.addEventListener('change', applyFilters);
 
     function attachCardListeners(el: HTMLElement) {
-      el.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
+      el.querySelectorAll<HTMLElement>('.swipe-container').forEach((wrapper) => {
+        const card = wrapper.querySelector<HTMLElement>('.recipe-card')!;
         let startX = 0;
         let currentX = 0;
         let swiping = false;
@@ -367,7 +368,11 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           const dx = currentX - startX;
           if (Math.abs(dx) > 10) {
             card.style.transform = `translateX(${dx}px)`;
-            card.style.opacity = String(1 - Math.abs(dx) / 300);
+            // Show the relevant action label
+            const leftAction = wrapper.querySelector<HTMLElement>('.swipe-action-left')!;
+            const rightAction = wrapper.querySelector<HTMLElement>('.swipe-action-right')!;
+            leftAction.style.opacity = dx < -30 ? '1' : '0';
+            rightAction.style.opacity = dx > 30 ? '1' : '0';
           }
         }, { passive: true });
 
@@ -376,9 +381,10 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           swiping = false;
           const dx = currentX - startX;
           card.style.transition = 'transform 0.2s, opacity 0.2s';
+          const leftAction = wrapper.querySelector<HTMLElement>('.swipe-action-left')!;
+          const rightAction = wrapper.querySelector<HTMLElement>('.swipe-action-right')!;
 
           if (dx < -100) {
-            // Swipe left → delete
             card.style.transform = 'translateX(-100%)';
             card.style.opacity = '0';
             const id = card.dataset.id;
@@ -388,9 +394,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             } else {
               card.style.transform = '';
               card.style.opacity = '';
+              leftAction.style.opacity = '0';
             }
           } else if (dx > 100) {
-            // Swipe right → add to planner (today's dinner)
             card.style.transform = 'translateX(100%)';
             card.style.opacity = '0';
             const id = card.dataset.id;
@@ -400,13 +406,15 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
               addToMealPlan(today, { recipeId: id, recipeName: name, meal: 'dinner' });
               card.style.transform = '';
               card.style.opacity = '';
-              // Brief visual feedback
+              rightAction.style.opacity = '0';
               card.classList.add('swipe-added');
               setTimeout(() => card.classList.remove('swipe-added'), 1000);
             }
           } else {
             card.style.transform = '';
             card.style.opacity = '';
+            leftAction.style.opacity = '0';
+            rightAction.style.opacity = '0';
           }
         });
 
@@ -493,19 +501,23 @@ function renderRecipeCard(recipe: RecipeRecord): string {
   const nutritionHtml = buildNutritionBadge(recipe);
 
   return `
-    <article class="recipe-card" data-id="${recipe.id}" role="button" tabindex="0">
-      ${photoHtml}
-      <div class="card-body">
-        <h3>${escapeHtml(recipe.name)}</h3>
-        <div class="card-meta">
-          <span class="card-rating">${stars}</span>
-          ${recipe.time_to_cook_minutes ? `<span>${recipe.time_to_cook_minutes} min</span>` : ''}
-          ${recipe.servings ? `<span>${recipe.servings} servings</span>` : ''}
+    <div class="swipe-container">
+      <div class="swipe-action swipe-action-left">🗑 Delete</div>
+      <div class="swipe-action swipe-action-right">📅 Plan</div>
+      <article class="recipe-card" data-id="${recipe.id}" role="button" tabindex="0">
+        ${photoHtml}
+        <div class="card-body">
+          <h3>${escapeHtml(recipe.name)}</h3>
+          <div class="card-meta">
+            <span class="card-rating">${stars}</span>
+            ${recipe.time_to_cook_minutes ? `<span>${recipe.time_to_cook_minutes} min</span>` : ''}
+            ${recipe.servings ? `<span>${recipe.servings} servings</span>` : ''}
+          </div>
+          ${nutritionHtml}
+          <div class="card-categories">${recipe.filter_categories.map((c) => `<span class="tag">${c}</span>`).join('')}</div>
         </div>
-        ${nutritionHtml}
-        <div class="card-categories">${recipe.filter_categories.map((c) => `<span class="tag">${c}</span>`).join('')}</div>
-      </div>
-    </article>
+      </article>
+    </div>
   `;
 }
 
