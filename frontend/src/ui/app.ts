@@ -174,7 +174,8 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     const mealTypes = allTags.filter(t => VALID_CATEGORIES.includes(t));
     const courses = allTags.filter(t => COURSES.includes(t));
     const foodCats = allTags.filter(t => FOOD_CATEGORIES.includes(t));
-    // Any custom tags that don't match built-in lists go to mealType (they'll render as custom chips)
+    // Custom tags that don't match any built-in list go to category (food category)
+    // since that's the most general grouping for custom items like "curry", "turkey", etc.
     const customTags = allTags.filter(t => !VALID_CATEGORIES.includes(t) && !COURSES.includes(t) && !FOOD_CATEGORIES.includes(t));
 
     const prefill = {
@@ -187,9 +188,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       caloriesPerServing: recipe.calories_per_serving ?? undefined,
       proteinPerServing: recipe.protein_per_serving ?? undefined,
       costPerServing: recipe.cost_per_portion ?? undefined,
-      mealType: [...mealTypes, ...customTags],
+      mealType: mealTypes,
       course: courses,
-      category: foodCats,
+      category: [...foodCats, ...customTags],
     };
     renderRecipeForm(main, prefill, recipe.source_link, {
       onSaved: () => showBrowse(),
