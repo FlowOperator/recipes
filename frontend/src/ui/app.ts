@@ -234,6 +234,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     ).join('');
 
     main.innerHTML = `
+      <div class="ptr-indicator" id="ptr-indicator">↓ Pull to refresh</div>
       <div class="browse-controls">
         <div class="search-row">
           <input id="recipe-search" type="text" placeholder="Search recipes..." maxlength="100" />
@@ -449,6 +450,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     }
 
     attachCardListeners(main.querySelector<HTMLElement>('#recipe-list')!);
+
+    // Pull-to-refresh
+    setupPullToRefresh(main, showBrowse);
   }
 
   container.querySelector<HTMLButtonElement>('#nav-browse')!.addEventListener('click', () => showBrowse());
@@ -462,6 +466,52 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
   // Default view
   showBrowse();
+}
+
+function setupPullToRefresh(container: HTMLElement, onRefresh: () => void) {
+  const indicator = container.querySelector<HTMLElement>('#ptr-indicator');
+  if (!indicator) return;
+
+  let startY = 0;
+  let pulling = false;
+
+  container.addEventListener('touchstart', (e) => {
+    if (container.scrollTop === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0 && dy < 150) {
+      indicator.style.height = `${Math.min(dy * 0.5, 50)}px`;
+      indicator.style.opacity = String(Math.min(dy / 100, 1));
+      if (dy > 80) {
+        indicator.textContent = '↑ Release to refresh';
+      } else {
+        indicator.textContent = '↓ Pull to refresh';
+      }
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    const h = parseFloat(indicator.style.height || '0');
+    if (h >= 40) {
+      indicator.textContent = '⟳ Refreshing...';
+      indicator.style.height = '36px';
+      indicator.style.opacity = '1';
+      setTimeout(() => {
+        onRefresh();
+      }, 300);
+    } else {
+      indicator.style.height = '0';
+      indicator.style.opacity = '0';
+    }
+  });
 }
 
 function buildNutritionBadge(recipe: RecipeRecord): string {

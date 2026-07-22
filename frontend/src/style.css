@@ -2005,3 +2005,16 @@ pre {
   color: var(--text-light);
   margin-top: 8px;
 }
+
+/* === PULL TO REFRESH === */
+.ptr-indicator {
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 500 13px/1 var(--font-body);
+  color: var(--terracotta);
+  opacity: 0;
+  transition: height 0.2s, opacity 0.2s;
+}
