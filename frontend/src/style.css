@@ -1031,20 +1031,25 @@ pre {
   flex: 1;
   font: 400 14px/1 var(--font-body);
   padding: 10px 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--cream-surface);
   color: var(--text-dark);
 }
 
-.sl-add button, .shopping-section button, #sl-export, #save-notes {
+.sl-add button {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50%;
+  border: none;
   background: var(--terracotta);
   color: #fff;
-  border: none;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  font: 500 14px/1 var(--font-body);
+  font-size: 20px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Hide old nav styles */
@@ -1473,4 +1478,38 @@ pre {
   color: var(--text-light);
   max-width: 280px;
   margin: 0 auto;
+}
+
+/* === DETAIL ACTION ROW === */
+.detail-action-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.detail-action-row button {
+  flex: 1;
+  font: 500 13px/1 var(--font-body);
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--cream-surface);
+  color: var(--terracotta);
+  cursor: pointer;
+}
+
+.detail-action-row button:hover {
+  background: var(--terracotta);
+  color: #fff;
+  border-color: var(--terracotta);
+}
+
+.shopping-section button, #sl-export, #save-notes {
+  background: var(--terracotta);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font: 500 14px/1 var(--font-body);
+  cursor: pointer;
 }

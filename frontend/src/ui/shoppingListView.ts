@@ -4,6 +4,7 @@ import {
   removeItem,
   clearCheckedItems,
   clearAllItems,
+  addIngredientsToShoppingList,
   type ShoppingListItem,
 } from '../lib/shoppingListStore';
 import { getAisle, AISLE_ORDER } from '../lib/aisleCategories';
@@ -19,9 +20,18 @@ export function renderShoppingListView(container: HTMLElement): void {
       container.innerHTML = `
         <section class="sl-view">
           <h2>Shopping List</h2>
-          <p class="empty-state">Your shopping list is empty. Open a recipe and tap "Add to shopping list" to get started.</p>
+          <div class="sl-add">
+            <input id="sl-manual-input" type="text" placeholder="Add an item..." maxlength="100" />
+            <button id="sl-manual-add" type="button">+</button>
+          </div>
+          <div class="empty-state-hero">
+            <div class="empty-state-icon">🛒</div>
+            <h2>List is empty</h2>
+            <p>Add items manually above, or open a recipe and tap "Add to shopping list".</p>
+          </div>
         </section>
       `;
+      attachManualAdd();
       return;
     }
 
@@ -38,6 +48,10 @@ export function renderShoppingListView(container: HTMLElement): void {
     let html = `
       <section class="sl-view">
         <h2>Shopping List <span class="sl-count">(${uncheckedCount} remaining)</span></h2>
+        <div class="sl-add">
+          <input id="sl-manual-input" type="text" placeholder="Add an item..." maxlength="100" />
+          <button id="sl-manual-add" type="button">+</button>
+        </div>
     `;
 
     // Render aisles in standard supermarket order
@@ -129,10 +143,31 @@ export function renderShoppingListView(container: HTMLElement): void {
       try {
         await navigator.clipboard.writeText(text);
         statusEl.textContent = 'Copied to clipboard!';
-        statusEl.style.color = 'var(--primary)';
+        statusEl.style.color = 'var(--terracotta)';
       } catch {
         statusEl.textContent = 'Export failed.';
       }
+    });
+
+    attachManualAdd();
+  }
+
+  function attachManualAdd() {
+    const input = container.querySelector<HTMLInputElement>('#sl-manual-input');
+    const btn = container.querySelector<HTMLButtonElement>('#sl-manual-add');
+    if (!input || !btn) return;
+
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      addIngredientsToShoppingList([{ name: val, quantity: null, unit: null }], 'Manual');
+      input.value = '';
+      render();
+    };
+
+    btn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doAdd(); }
     });
   }
 }

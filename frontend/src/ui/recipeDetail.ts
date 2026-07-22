@@ -1,5 +1,5 @@
 import type { RecipeRecord } from '../lib/recipeStore';
-import { updateRecipe, deleteRecipe } from '../lib/recipeStore';
+import { updateRecipe, deleteRecipe, createRecipe } from '../lib/recipeStore';
 import { getPhotoUrl } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
@@ -41,7 +41,11 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
   container.innerHTML = `
     <section class="recipe-detail">
       <button id="detail-back" type="button" class="secondary-action">← Back</button>
-      <button id="detail-edit" type="button" class="btn-secondary">✏️ Edit recipe</button>
+      <div class="detail-action-row">
+        <button id="detail-edit" type="button" class="btn-secondary">✏️ Edit</button>
+        <button id="detail-duplicate" type="button" class="btn-secondary">📋 Duplicate</button>
+        <button id="detail-share" type="button" class="btn-secondary">📤 Share</button>
+      </div>
       ${photoHtml}
       <h2>${esc(recipe.name)}</h2>
       ${recipe.source_link ? `<a href="${esc(recipe.source_link)}" target="_blank" rel="noopener">Source</a>` : ''}
@@ -114,6 +118,38 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
   // Edit
   container.querySelector<HTMLButtonElement>('#detail-edit')!.addEventListener('click', () => {
     callbacks.onEdit(recipe);
+  });
+
+  // Duplicate
+  container.querySelector<HTMLButtonElement>('#detail-duplicate')!.addEventListener('click', async () => {
+    const result = await createRecipe({
+      name: recipe.name + ' (copy)',
+      source_link: recipe.source_link,
+      ingredients: recipe.ingredients,
+      method: recipe.method,
+      time_to_cook_minutes: recipe.time_to_cook_minutes,
+      servings: recipe.servings,
+      filter_categories: recipe.filter_categories,
+      calories_per_serving: recipe.calories_per_serving,
+      protein_per_serving: recipe.protein_per_serving,
+      cost_per_portion: recipe.cost_per_portion,
+    });
+    if (result.ok) {
+      callbacks.onBack();
+    }
+  });
+
+  // Share / Export
+  container.querySelector<HTMLButtonElement>('#detail-share')!.addEventListener('click', async () => {
+    const text = formatRecipeForShare(recipe);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: recipe.name, text });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert('Recipe copied to clipboard!');
+    }
   });
 
   // Rating
@@ -241,4 +277,29 @@ function renderIngredientsList(
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatRecipeForShare(recipe: RecipeRecord): string {
+  const lines: string[] = [];
+  lines.push(recipe.name);
+  lines.push('');
+  if (recipe.servings) lines.push(`Servings: ${recipe.servings}`);
+  if (recipe.time_to_cook_minutes) lines.push(`Time: ${recipe.time_to_cook_minutes} min`);
+  lines.push('');
+  lines.push('Ingredients:');
+  for (const ing of recipe.ingredients) {
+    const parts: string[] = [];
+    if (ing.quantity != null) parts.push(String(ing.quantity));
+    if (ing.unit) parts.push(ing.unit);
+    parts.push(ing.name);
+    lines.push('• ' + parts.join(' '));
+  }
+  lines.push('');
+  lines.push('Method:');
+  lines.push(recipe.method);
+  if (recipe.source_link) {
+    lines.push('');
+    lines.push(`Source: ${recipe.source_link}`);
+  }
+  return lines.join('\n');
 }
