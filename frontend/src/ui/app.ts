@@ -4,6 +4,7 @@ import { renderAddViaClaude } from './addViaClaude';
 import { renderRecipeForm } from './recipeForm';
 import { renderRecipeDetail } from './recipeDetail';
 import { renderShoppingListView } from './shoppingListView';
+import { renderPlannerView } from './plannerView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
@@ -147,12 +148,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
   function showPlannerView() {
     setActiveNav('nav-planner');
-    main.innerHTML = `
-      <section class="planner-view">
-        <h2>Meal Planner</h2>
-        <p>🚧 In development — coming soon!</p>
-      </section>
-    `;
+    renderPlannerView(main);
   }
 
   function showSettingsView() {

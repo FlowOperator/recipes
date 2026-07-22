@@ -1,6 +1,6 @@
 import type { RecipeRecord } from '../lib/recipeStore';
 import { updateRecipe, deleteRecipe, createRecipe } from '../lib/recipeStore';
-import { getPhotoUrl } from '../lib/photoStorage';
+import { getPhotoUrl, uploadRecipePhoto } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
 import { scaleIngredients, formatQuantity } from '../lib/ingredientScaling';
@@ -46,6 +46,9 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
         <button id="detail-share" type="button" class="btn-secondary">📤 Share</button>
       </div>
       ${photoHtml}
+      <label class="photo-upload-btn" for="photo-upload-input">📷 ${photoUrl ? 'Change photo' : 'Add photo'}</label>
+      <input id="photo-upload-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden-file-input" />
+      <p id="photo-status" class="form-error"></p>
       <h2>${esc(recipe.name)}</h2>
       ${recipe.source_link ? `<a href="${esc(recipe.source_link)}" target="_blank" rel="noopener">Source</a>` : ''}
 
@@ -147,6 +150,27 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
     } else {
       await navigator.clipboard.writeText(text);
       alert('Recipe copied to clipboard!');
+    }
+  });
+
+  // Photo upload
+  container.querySelector<HTMLInputElement>('#photo-upload-input')!.addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const statusEl = container.querySelector<HTMLParagraphElement>('#photo-status')!;
+    statusEl.textContent = 'Uploading...';
+    statusEl.style.color = 'var(--text-light)';
+    const result = await uploadRecipePhoto(recipe.id, file);
+    if (result.ok && result.path) {
+      await updateRecipe(recipe.id, { photo_path: result.path });
+      recipe.photo_path = result.path;
+      statusEl.textContent = '';
+      // Re-render to show new photo
+      renderRecipeDetail(container, recipe, callbacks);
+    } else {
+      statusEl.textContent = result.error ?? 'Upload failed.';
+      statusEl.style.color = 'var(--error)';
     }
   });
 
