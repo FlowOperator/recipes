@@ -356,11 +356,13 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
         let startX = 0;
         let currentX = 0;
         let swiping = false;
+        let didSwipe = false;
 
         card.addEventListener('touchstart', (e) => {
           startX = e.touches[0].clientX;
           currentX = startX;
           swiping = true;
+          didSwipe = false;
           card.style.transition = 'none';
         }, { passive: true });
 
@@ -368,9 +370,9 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           if (!swiping) return;
           currentX = e.touches[0].clientX;
           const dx = currentX - startX;
-          if (Math.abs(dx) > 10) {
+          if (Math.abs(dx) > 15) {
+            didSwipe = true;
             card.style.transform = `translateX(${dx}px)`;
-            // Show the relevant action label
             const leftAction = wrapper.querySelector<HTMLElement>('.swipe-action-left')!;
             const rightAction = wrapper.querySelector<HTMLElement>('.swipe-action-right')!;
             leftAction.style.opacity = dx < -30 ? '1' : '0';
@@ -423,7 +425,13 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           }
         });
 
-        card.addEventListener('click', async () => {
+        card.addEventListener('click', async (e) => {
+          // Suppress click if a swipe just happened
+          if (didSwipe) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
           const id = card.dataset.id;
           if (!id) return;
           const recipe = await getRecipe(id);
@@ -480,7 +488,9 @@ function setupPullToRefresh(container: HTMLElement, onRefresh: () => void) {
   let pulling = false;
 
   container.addEventListener('touchstart', (e) => {
-    if (container.scrollTop === 0) {
+    // Only activate if the page is scrolled to the very top
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    if (scrollTop <= 5) {
       startY = e.touches[0].clientY;
       pulling = true;
     }
@@ -489,14 +499,14 @@ function setupPullToRefresh(container: HTMLElement, onRefresh: () => void) {
   container.addEventListener('touchmove', (e) => {
     if (!pulling) return;
     const dy = e.touches[0].clientY - startY;
-    if (dy > 0 && dy < 150) {
-      indicator.style.height = `${Math.min(dy * 0.5, 50)}px`;
-      indicator.style.opacity = String(Math.min(dy / 100, 1));
-      if (dy > 80) {
-        indicator.textContent = '↑ Release to refresh';
-      } else {
-        indicator.textContent = '↓ Pull to refresh';
-      }
+    if (dy > 20 && dy < 160) {
+      indicator.style.height = `${Math.min((dy - 20) * 0.4, 44)}px`;
+      indicator.style.opacity = String(Math.min((dy - 20) / 100, 1));
+      indicator.textContent = dy > 100 ? '↑ Release to refresh' : '↓ Pull to refresh';
+    } else if (dy <= 20) {
+      // Not enough movement — reset
+      indicator.style.height = '0';
+      indicator.style.opacity = '0';
     }
   }, { passive: true });
 
@@ -504,13 +514,15 @@ function setupPullToRefresh(container: HTMLElement, onRefresh: () => void) {
     if (!pulling) return;
     pulling = false;
     const h = parseFloat(indicator.style.height || '0');
-    if (h >= 40) {
+    if (h >= 36) {
       indicator.textContent = '⟳ Refreshing...';
       indicator.style.height = '36px';
       indicator.style.opacity = '1';
       setTimeout(() => {
+        indicator.style.height = '0';
+        indicator.style.opacity = '0';
         onRefresh();
-      }, 300);
+      }, 400);
     } else {
       indicator.style.height = '0';
       indicator.style.opacity = '0';

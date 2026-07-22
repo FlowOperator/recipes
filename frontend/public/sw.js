@@ -1,29 +1,47 @@
-const CACHE_NAME = 'recipe-site-v3';
+const CACHE_NAME = 'recipe-site-v4';
 
-// On install: skip waiting so the new SW activates immediately
+// On install: don't skipWaiting — let the update apply on next navigation
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // New SW waits until all tabs are closed, then activates
 });
 
-// On activate: delete ALL old caches and take control of all clients
+// On activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+      .then((keys) => Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+      ))
   );
 });
 
-// Fetch strategy: network-first for everything.
-// Try network first; only fall back to cache if offline.
-// This ensures the latest deploy is always served when online.
+// Fetch strategy: network-first for navigation/API, cache-first for assets
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // For JS/CSS assets with hashed filenames: cache-first (they're immutable)
+  if (url.pathname.match(/\/assets\/.*\.(js|css)$/)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // For everything else: network-first
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache a copy for offline use
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
@@ -31,9 +49,8 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Offline: serve from cache if available
         return caches.match(event.request).then((cached) => {
-          return cached || new Response('Offline - content not cached', { status: 503 });
+          return cached || new Response('Offline', { status: 503 });
         });
       })
   );
