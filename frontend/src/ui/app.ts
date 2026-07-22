@@ -6,6 +6,8 @@ import { renderRecipeDetail } from './recipeDetail';
 import { renderShoppingListView } from './shoppingListView';
 import { renderPlannerView } from './plannerView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
+import { deleteRecipe } from '../lib/recipeStore';
+import { addToMealPlan } from '../lib/mealPlanStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { filterByCategories } from '../lib/recipeFilters';
@@ -159,6 +161,21 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
         <div class="settings-item">
           <span>Account</span>
           <button id="settings-signout" type="button">Sign out</button>
+        </div>
+
+        <div class="settings-about">
+          <h3>About Nick's Picks</h3>
+          <p>Your personal recipe manager — built to keep track of what you cook, plan meals for the week, and make shopping easier.</p>
+          <ul>
+            <li><strong>Recipe library</strong> — save recipes from links, AI import, or manual entry with full nutrition tracking</li>
+            <li><strong>Smart search</strong> — find recipes by name, ingredient, or category with protein-density sorting</li>
+            <li><strong>Serving scaler</strong> — adjust servings and watch ingredients scale automatically (smart enough to skip salt &amp; pepper)</li>
+            <li><strong>Meal planner</strong> — plan your week with a 7-day view, assign recipes to breakfast, lunch, dinner, or snacks</li>
+            <li><strong>Shopping list</strong> — add ingredients from recipes (scaled to your serving size), combines duplicates, organised by aisle</li>
+            <li><strong>Share &amp; duplicate</strong> — copy recipes as text or duplicate to create variations</li>
+            <li><strong>Photo upload</strong> — add your own photos or let Pexels fill in with stock imagery</li>
+          </ul>
+          <p class="settings-version">v2.0 · Made with care for good food</p>
         </div>
       </section>
     `;
@@ -333,6 +350,66 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
     function attachCardListeners(el: HTMLElement) {
       el.querySelectorAll<HTMLElement>('.recipe-card').forEach((card) => {
+        let startX = 0;
+        let currentX = 0;
+        let swiping = false;
+
+        card.addEventListener('touchstart', (e) => {
+          startX = e.touches[0].clientX;
+          currentX = startX;
+          swiping = true;
+          card.style.transition = 'none';
+        }, { passive: true });
+
+        card.addEventListener('touchmove', (e) => {
+          if (!swiping) return;
+          currentX = e.touches[0].clientX;
+          const dx = currentX - startX;
+          if (Math.abs(dx) > 10) {
+            card.style.transform = `translateX(${dx}px)`;
+            card.style.opacity = String(1 - Math.abs(dx) / 300);
+          }
+        }, { passive: true });
+
+        card.addEventListener('touchend', async () => {
+          if (!swiping) return;
+          swiping = false;
+          const dx = currentX - startX;
+          card.style.transition = 'transform 0.2s, opacity 0.2s';
+
+          if (dx < -100) {
+            // Swipe left → delete
+            card.style.transform = 'translateX(-100%)';
+            card.style.opacity = '0';
+            const id = card.dataset.id;
+            if (id && confirm('Delete this recipe?')) {
+              await deleteRecipe(id);
+              showBrowse();
+            } else {
+              card.style.transform = '';
+              card.style.opacity = '';
+            }
+          } else if (dx > 100) {
+            // Swipe right → add to planner (today's dinner)
+            card.style.transform = 'translateX(100%)';
+            card.style.opacity = '0';
+            const id = card.dataset.id;
+            const name = card.querySelector<HTMLElement>('.card-body h3')?.textContent ?? '';
+            if (id) {
+              const today = new Date().toISOString().split('T')[0];
+              addToMealPlan(today, { recipeId: id, recipeName: name, meal: 'dinner' });
+              card.style.transform = '';
+              card.style.opacity = '';
+              // Brief visual feedback
+              card.classList.add('swipe-added');
+              setTimeout(() => card.classList.remove('swipe-added'), 1000);
+            }
+          } else {
+            card.style.transform = '';
+            card.style.opacity = '';
+          }
+        });
+
         card.addEventListener('click', async () => {
           const id = card.dataset.id;
           if (!id) return;

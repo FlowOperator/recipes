@@ -1905,3 +1905,68 @@ pre {
   border-top: 1px solid var(--border);
   margin-top: 16px;
 }
+
+/* === SWIPE ACTIONS === */
+.recipe-card {
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.recipe-card.swipe-added {
+  background: var(--olive-light) !important;
+  border-color: var(--olive) !important;
+  transition: background 0.5s, border-color 0.5s;
+}
+
+/* === SETTINGS ABOUT === */
+.settings-about {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-about h3 {
+  font: 700 18px/1.2 var(--font-heading);
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.settings-about p {
+  font: 400 14px/1.5 var(--font-body);
+  color: var(--text-mid);
+  margin-bottom: 12px;
+}
+
+.settings-about ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.settings-about li {
+  font: 400 13px/1.4 var(--font-body);
+  color: var(--text-mid);
+  padding-left: 16px;
+  position: relative;
+}
+
+.settings-about li::before {
+  content: "•";
+  color: var(--terracotta);
+  position: absolute;
+  left: 0;
+}
+
+.settings-about li strong {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
+.settings-version {
+  font: 400 12px/1 var(--font-body);
+  color: var(--text-light);
+  margin-top: 8px;
+}
