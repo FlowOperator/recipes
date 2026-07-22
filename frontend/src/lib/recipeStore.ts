@@ -79,6 +79,24 @@ export async function createRecipe(input: CreateRecipeInput): Promise<{ ok: bool
 }
 
 /**
+ * Fetches all unique filter_categories tags across all recipes for this user.
+ * Used to provide globally-available custom tags in the recipe form.
+ */
+export async function getAllTags(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('filter_categories');
+  if (error || !data) return [];
+  const all = new Set<string>();
+  for (const row of data) {
+    for (const tag of (row as { filter_categories: string[] }).filter_categories) {
+      all.add(tag);
+    }
+  }
+  return Array.from(all);
+}
+
+/**
  * Fetches all recipes for the current Owner (Requirement 12.1).
  */
 export async function listRecipes(): Promise<RecipeRecord[]> {
