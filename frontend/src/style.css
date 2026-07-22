@@ -334,9 +334,9 @@ a:hover { color: var(--terracotta-hover); }
 .recipe-card:hover { box-shadow: var(--shadow-lg); }
 
 .card-photo {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
   object-fit: cover;
   display: block;
   border-radius: var(--radius-sm);
@@ -346,7 +346,7 @@ a:hover { color: var(--terracotta-hover); }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 28px;
   background: var(--chip-bg);
   color: var(--terracotta);
 }
@@ -1418,4 +1418,59 @@ pre {
 .ef-picker-header h3 {
   font: 700 18px/1 var(--font-heading);
   color: var(--text-dark);
+}
+
+/* === FILTER BAR (horizontal scrollable chips) === */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 0 12px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-chip-btn {
+  flex: none;
+  font: 500 12.5px/1 var(--font-body);
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--cream-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.filter-chip-btn.active {
+  background: var(--terracotta);
+  color: #fff;
+  border-color: var(--terracotta);
+}
+
+/* === EMPTY STATE HERO === */
+.empty-state-hero {
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.empty-state-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.empty-state-hero h2 {
+  font: 700 22px/1.2 var(--font-heading);
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.empty-state-hero p {
+  font: 400 15px/1.5 var(--font-body);
+  color: var(--text-light);
+  max-width: 280px;
+  margin: 0 auto;
 }

@@ -7,7 +7,7 @@ import { renderShoppingListView } from './shoppingListView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
-import { filterByCategories, searchByIngredient } from '../lib/recipeFilters';
+import { filterByCategories } from '../lib/recipeFilters';
 import { VALID_CATEGORIES, COURSES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
 
@@ -204,22 +204,30 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     const recipes = await listRecipes();
 
     if (recipes.length === 0) {
-      main.innerHTML = '<p class="empty-state">No recipes yet. Add your first one using the buttons above.</p>';
+      main.innerHTML = `
+        <div class="empty-state-hero">
+          <div class="empty-state-icon">🍳</div>
+          <h2>No recipes yet</h2>
+          <p>Tap the + button to add your first recipe — import from a link, use AI, or type it in manually.</p>
+        </div>
+      `;
       return;
     }
 
-    const filterHtml = VALID_CATEGORIES.map(c =>
-      `<label class="filter-chip"><input type="checkbox" value="${c}" /> ${c}</label>`
+    // Collect all unique categories across recipes for the filter bar
+    const allCats = [...new Set(recipes.flatMap(r => r.filter_categories))].sort();
+    const filterChipsHtml = allCats.map(c =>
+      `<button class="filter-chip-btn" data-cat="${c}">${c}</button>`
     ).join('');
 
     main.innerHTML = `
       <div class="browse-controls">
         <div class="search-row">
-          <input id="ingredient-search" type="text" placeholder="Search by ingredient..." maxlength="100" />
+          <input id="recipe-search" type="text" placeholder="Search recipes..." maxlength="100" />
         </div>
         <div class="sort-row">
-          <button id="sort-protein" type="button" class="sort-btn">Sort: Protein/cal ↓</button>
-          <button id="sort-stars" type="button" class="sort-btn">Sort: Rating ↓</button>
+          <button id="sort-protein" type="button" class="sort-btn">Protein/cal ↓</button>
+          <button id="sort-stars" type="button" class="sort-btn">Rating ↓</button>
           <select id="filter-stars" class="sort-btn">
             <option value="">All ratings</option>
             <option value="5">★★★★★</option>
@@ -227,34 +235,42 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             <option value="3">★★★+</option>
           </select>
         </div>
-        <details class="filter-panel">
-          <summary>Filter by category</summary>
-          <div class="filter-chips">${filterHtml}</div>
-        </details>
+        <div class="filter-bar" id="filter-bar">${filterChipsHtml}</div>
       </div>
       <div id="recipe-list" class="recipe-grid">${recipes.map(renderRecipeCard).join('')}</div>
-      <div class="shopping-section">
-      </div>
     `;
 
     let filteredRecipes = recipes;
-
     let sortByProtein = false;
     let sortByStars = false;
+    const activeFilters = new Set<string>();
 
     function applyFilters() {
-      const selectedCats = Array.from(main.querySelectorAll<HTMLInputElement>('.filter-chips input:checked')).map(cb => cb.value);
-      const searchTerm = (main.querySelector<HTMLInputElement>('#ingredient-search')!).value;
+      const searchTerm = (main.querySelector<HTMLInputElement>('#recipe-search')!).value.trim().toLowerCase();
       const minStars = (main.querySelector<HTMLSelectElement>('#filter-stars')!).value;
 
-      filteredRecipes = filterByCategories(recipes, selectedCats);
-      if (searchTerm.trim().length > 0) {
-        filteredRecipes = searchByIngredient(filteredRecipes, searchTerm);
+      filteredRecipes = recipes;
+
+      // Category filter
+      if (activeFilters.size > 0) {
+        filteredRecipes = filterByCategories(filteredRecipes, [...activeFilters]);
       }
+
+      // Search by name and ingredient
+      if (searchTerm.length > 0) {
+        filteredRecipes = filteredRecipes.filter(r =>
+          r.name.toLowerCase().includes(searchTerm) ||
+          r.ingredients.some(ing => ing.name.toLowerCase().includes(searchTerm))
+        );
+      }
+
+      // Rating filter
       if (minStars) {
         const min = Number(minStars);
         filteredRecipes = filteredRecipes.filter(r => (r.rating ?? 0) >= min);
       }
+
+      // Sort
       if (sortByProtein) {
         filteredRecipes = [...filteredRecipes].sort((a, b) => {
           const ratioA = (a.calories_per_serving && a.calories_per_serving > 0 && a.protein_per_serving != null)
@@ -277,8 +293,22 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       }
     }
 
-    main.querySelectorAll('.filter-chips input').forEach(cb => cb.addEventListener('change', applyFilters));
-    main.querySelector<HTMLInputElement>('#ingredient-search')!.addEventListener('input', applyFilters);
+    // Filter chip toggle
+    main.querySelectorAll<HTMLButtonElement>('.filter-chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cat = btn.dataset.cat!;
+        if (activeFilters.has(cat)) {
+          activeFilters.delete(cat);
+          btn.classList.remove('active');
+        } else {
+          activeFilters.add(cat);
+          btn.classList.add('active');
+        }
+        applyFilters();
+      });
+    });
+
+    main.querySelector<HTMLInputElement>('#recipe-search')!.addEventListener('input', applyFilters);
     main.querySelector<HTMLButtonElement>('#sort-protein')!.addEventListener('click', () => {
       sortByProtein = !sortByProtein;
       sortByStars = false;
@@ -286,8 +316,8 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       const btn2 = main.querySelector<HTMLButtonElement>('#sort-stars')!;
       btn.classList.toggle('sort-active', sortByProtein);
       btn2.classList.remove('sort-active');
-      btn.textContent = sortByProtein ? 'Sort: Protein/cal ↓ ✓' : 'Sort: Protein/cal ↓';
-      btn2.textContent = 'Sort: Rating ↓';
+      btn.textContent = sortByProtein ? 'Protein/cal ↓ ✓' : 'Protein/cal ↓';
+      btn2.textContent = 'Rating ↓';
       applyFilters();
     });
 
@@ -298,8 +328,8 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       const btn2 = main.querySelector<HTMLButtonElement>('#sort-protein')!;
       btn.classList.toggle('sort-active', sortByStars);
       btn2.classList.remove('sort-active');
-      btn.textContent = sortByStars ? 'Sort: Rating ↓ ✓' : 'Sort: Rating ↓';
-      btn2.textContent = 'Sort: Protein/cal ↓';
+      btn.textContent = sortByStars ? 'Rating ↓ ✓' : 'Rating ↓';
+      btn2.textContent = 'Protein/cal ↓';
       applyFilters();
     });
 
