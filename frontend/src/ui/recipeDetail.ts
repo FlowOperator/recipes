@@ -18,7 +18,6 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
     : `<div class="detail-photo placeholder" id="detail-photo-placeholder">🍽️</div>`;
 
   const stars = renderStars(recipe.rating);
-  const ratio = computeRatio(recipe.calories_per_serving, recipe.protein_per_serving);
   const baseServings = recipe.servings ?? 1;
   let currentServings = baseServings;
 
@@ -67,21 +66,20 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
       <div class="detail-nutrition">
         <h3>Nutrition (per serving)</h3>
         <div class="nutrition-grid">
-          <div class="nutrition-row"><span class="nutr-label">Serving size</span><input id="edit-serving-size" type="text" maxlength="50" value="${esc(recipe.serving_size ?? '')}" placeholder="e.g. 1 bowl" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Calories</span><input id="edit-calories" type="number" min="0" step="1" value="${recipe.calories_per_serving ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Protein (g)</span><input id="edit-protein" type="number" min="0" step="0.1" value="${recipe.protein_per_serving ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Total Fat (g)</span><input id="edit-fat" type="number" min="0" step="0.1" value="${recipe.total_fat ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Saturated Fat (g)</span><input id="edit-sat-fat" type="number" min="0" step="0.1" value="${recipe.saturated_fat ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Cholesterol (mg)</span><input id="edit-cholesterol" type="number" min="0" step="1" value="${recipe.cholesterol ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Sodium (mg)</span><input id="edit-sodium" type="number" min="0" step="1" value="${recipe.sodium ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Carbohydrates (g)</span><input id="edit-carbs" type="number" min="0" step="0.1" value="${recipe.total_carbohydrate ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Dietary Fiber (g)</span><input id="edit-fiber" type="number" min="0" step="0.1" value="${recipe.dietary_fiber ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Sugars (g)</span><input id="edit-sugars" type="number" min="0" step="0.1" value="${recipe.sugars ?? ''}" /></div>
-          <div class="nutrition-row"><span class="nutr-label">Cost/portion (£)</span><input id="edit-cost" type="number" min="0" max="9999.99" step="0.01" value="${recipe.cost_per_portion ?? ''}" /></div>
-        </div>
-        <button id="save-nutrition" type="button" class="btn-primary" style="margin-top:12px">Save nutrition</button>
-        <p id="nutrition-status" class="form-error" role="alert"></p>
-        <div class="nutrition-row"><span class="nutr-label">Protein/cal ratio</span><span class="nutr-value">${ratio}</span></div>
+            <div class="nutrition-row"><span class="nutr-label">Serving size</span><input id="edit-serving-size" type="text" maxlength="50" value="${esc(recipe.serving_size ?? '')}" placeholder="e.g. 1 bowl" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Calories</span><input id="edit-calories" type="number" min="0" step="1" value="${recipe.calories_per_serving ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Protein (g)</span><input id="edit-protein" type="number" min="0" step="0.1" value="${recipe.protein_per_serving ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Total Fat (g)</span><input id="edit-fat" type="number" min="0" step="0.1" value="${recipe.total_fat ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Saturated Fat (g)</span><input id="edit-sat-fat" type="number" min="0" step="0.1" value="${recipe.saturated_fat ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Cholesterol (mg)</span><input id="edit-cholesterol" type="number" min="0" step="1" value="${recipe.cholesterol ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Sodium (mg)</span><input id="edit-sodium" type="number" min="0" step="1" value="${recipe.sodium ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Carbohydrates (g)</span><input id="edit-carbs" type="number" min="0" step="0.1" value="${recipe.total_carbohydrate ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Dietary Fiber (g)</span><input id="edit-fiber" type="number" min="0" step="0.1" value="${recipe.dietary_fiber ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Sugars (g)</span><input id="edit-sugars" type="number" min="0" step="0.1" value="${recipe.sugars ?? ''}" /></div>
+            <div class="nutrition-row"><span class="nutr-label">Cost/portion (£)</span><input id="edit-cost" type="number" min="0" max="9999.99" step="0.01" value="${recipe.cost_per_portion ?? ''}" /></div>
+          </div>
+          <button id="save-nutrition" type="button" class="btn-primary" style="margin-top:12px">Save nutrition</button>
+          <p id="nutrition-status" class="form-error" role="alert"></p>
       </div>
 
       <div class="detail-categories">${recipe.filter_categories.map(c => `<span class="tag">${c}</span>`).join('')}</div>
@@ -251,11 +249,6 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
 function renderStars(rating: number | null): string {
   if (rating == null) return '<span class="unrated">Not rated</span>';
   return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-}
-
-function computeRatio(cal: number | null, protein: number | null): string {
-  if (cal == null || protein == null || cal <= 0) return 'N/A';
-  return (protein / cal).toFixed(3);
 }
 
 function formatIngredient(i: { name: string; quantity: number | null; unit: string | null }): string {

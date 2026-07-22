@@ -389,12 +389,21 @@ function buildNutritionBadge(recipe: RecipeRecord): string {
   const parts: string[] = [];
   if (recipe.calories_per_serving != null) parts.push(`${recipe.calories_per_serving} kcal`);
   if (recipe.protein_per_serving != null) parts.push(`${recipe.protein_per_serving}g protein`);
+
+  let ratioHtml = '';
   if (recipe.calories_per_serving && recipe.calories_per_serving > 0 && recipe.protein_per_serving != null) {
-    const ratio = (recipe.protein_per_serving / recipe.calories_per_serving * 1000).toFixed(0);
-    parts.push(`${ratio}g/1000kcal`);
+    const ratio = (recipe.protein_per_serving / recipe.calories_per_serving * 1000);
+    const ratioRounded = ratio.toFixed(0);
+    parts.push(`${ratioRounded}g/1000kcal`);
+
+    // Visual bar: scale 0-150g/1000kcal range, capped at 100%
+    const pct = Math.min(ratio / 150 * 100, 100);
+    // Colour: green for high protein, amber for mid, red-ish for low
+    const hue = Math.min(ratio * 0.8, 120); // 0=red, 60=yellow, 120=green
+    ratioHtml = `<div class="protein-bar"><div class="protein-bar-fill" style="width:${pct}%;background:hsl(${hue},65%,45%)"></div></div>`;
   }
 
-  return `<div class="card-nutrition">${parts.map(p => `<span>${p}</span>`).join('')}</div>`;
+  return `<div class="card-nutrition">${parts.map(p => `<span>${p}</span>`).join('')}</div>${ratioHtml}`;
 }
 
 function renderRecipeCard(recipe: RecipeRecord): string {
