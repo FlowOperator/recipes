@@ -17,7 +17,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       <header class="app-header">
         <div class="app-header-brand" id="brand-home" style="cursor:pointer">
           <div class="app-header-logo">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 11a8 8 0 0016 0" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M4 11h16M12 11V5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="#fff" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M13 13l8 8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
           </div>
           <h1>Nick's Picks</h1>
         </div>
