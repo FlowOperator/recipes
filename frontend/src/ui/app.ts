@@ -13,6 +13,7 @@ import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { filterByCategories } from '../lib/recipeFilters';
 import { VALID_CATEGORIES, COURSES } from '../lib/recipeValidation';
 import type { ExtractedRecipeFields } from '../lib/recipeTypes';
+import { showUndoToast } from './undoToast';
 
 export function renderApp(container: HTMLElement, onSignOut: () => void): void {
   container.innerHTML = `
@@ -389,13 +390,16 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             card.style.transform = 'translateX(-100%)';
             card.style.opacity = '0';
             const id = card.dataset.id;
-            if (id && confirm('Delete this recipe?')) {
-              await deleteRecipe(id);
-              showBrowse();
-            } else {
-              card.style.transform = '';
-              card.style.opacity = '';
-              leftAction.style.opacity = '0';
+            if (id) {
+              const shouldDelete = await showUndoToast('Recipe deleted');
+              if (shouldDelete) {
+                await deleteRecipe(id);
+                showBrowse();
+              } else {
+                card.style.transform = '';
+                card.style.opacity = '';
+                leftAction.style.opacity = '0';
+              }
             }
           } else if (dx > 100) {
             card.style.transform = 'translateX(100%)';

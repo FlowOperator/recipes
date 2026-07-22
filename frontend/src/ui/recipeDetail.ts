@@ -4,6 +4,7 @@ import { getPhotoUrl, uploadRecipePhoto } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
 import { scaleIngredients, formatQuantity } from '../lib/ingredientScaling';
+import { showUndoToast } from './undoToast';
 
 export interface RecipeDetailCallbacks {
   onBack: () => void;
@@ -239,10 +240,12 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
 
   // Delete
   container.querySelector<HTMLButtonElement>('#delete-recipe')!.addEventListener('click', async () => {
-    if (!confirm('Delete this recipe? This cannot be undone.')) return;
-    const result = await deleteRecipe(recipe.id);
-    if (result.ok) callbacks.onDeleted();
-    else alert('Deletion failed.');
+    const shouldDelete = await showUndoToast('Recipe deleted');
+    if (shouldDelete) {
+      const result = await deleteRecipe(recipe.id);
+      if (result.ok) callbacks.onDeleted();
+      else alert('Deletion failed.');
+    }
   });
 }
 
