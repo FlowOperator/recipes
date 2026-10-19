@@ -35,6 +35,20 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { margin: 0; }
 
+/*
+ * iOS Safari zooms the page in whenever a focused form control has a
+ * font-size below 16px. Force every text-entry control to at least 16px so
+ * focusing an input (add URL, shopping-list item, search, etc.) never triggers
+ * the auto-zoom. 16px is visually almost identical to the previous 15px but
+ * sidesteps the zoom entirely. Checkboxes/radios are excluded as they don't
+ * trigger it and have their own sizing.
+ */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 h1, h2, h3 {
   font-family: var(--font-heading);
   color: var(--text-dark);

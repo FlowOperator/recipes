@@ -8,6 +8,67 @@ export interface RecipeFormCallbacks {
 }
 
 /**
+ * In-progress recipe drafts are persisted to localStorage so that an iOS
+ * Safari page reload (common when returning to a backgrounded PWA tab, or
+ * under memory pressure after a zoom) does not wipe data the Owner just
+ * pulled from a link / Claude import or typed in manually.
+ *
+ * Only NEW-recipe drafts are persisted (not edits of existing records), and
+ * the draft is cleared on successful save or explicit close.
+ */
+const DRAFT_KEY = 'recipe-site:recipe-draft';
+
+interface RecipeDraft {
+  name: string;
+  sourceLink: string;
+  ingredientsText: string;
+  method: string;
+  notes: string;
+  servings: string;
+  timeToCookMinutes: string;
+  costPerPortion: string;
+  caloriesPerServing: string;
+  proteinPerServing: string;
+  courses: string[];
+  categories: string[];
+}
+
+function saveDraft(draft: RecipeDraft): void {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* storage full or unavailable — drafting is best-effort */
+  }
+}
+
+function loadDraft(): RecipeDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as RecipeDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True if a draft has any meaningful content worth restoring. */
+function draftHasContent(d: RecipeDraft): boolean {
+  return Boolean(
+    d.name || d.sourceLink || d.ingredientsText || d.method || d.notes ||
+    d.servings || d.timeToCookMinutes || d.costPerPortion ||
+    d.caloriesPerServing || d.proteinPerServing ||
+    d.courses.length || d.categories.length
+  );
+}
+
+/**
  * Renders a tabbed recipe edit form inspired by Recipe Keeper.
  * Tabs: Overview | Ingredients | Directions | Notes | Nutrition
  */
@@ -26,13 +87,31 @@ export async function renderRecipeForm(
     )
   )];
 
+  // Restore a saved draft only for NEW recipes (not when editing an existing
+  // record). A fresh prefill from a link/Claude import takes priority over an
+  // older stale draft, so we only fall back to the draft when there's no prefill.
+  const isNewRecipe = !editId;
+  const draft = isNewRecipe && !prefill ? loadDraft() : null;
+  const restored = draft && draftHasContent(draft) ? draft : null;
+
   const currentMealTypes = prefill?.mealType ?? [];
-  const currentCourses = prefill?.course ?? [];
-  const currentCategories = prefill?.category ?? [];
+  const currentCourses = prefill?.course ?? restored?.courses ?? [];
+  const currentCategories = prefill?.category ?? restored?.categories ?? [];
 
   const ingredientsText = prefill?.ingredients
     ? prefill.ingredients.map(formatIngredient).join('\n')
-    : '';
+    : (restored?.ingredientsText ?? '');
+
+  // Effective initial field values (prefill wins, then draft, then blank).
+  const initName = prefill?.name ?? restored?.name ?? '';
+  const initSource = sourceLink ?? prefill?.sourceLink ?? restored?.sourceLink ?? '';
+  const initMethod = prefill?.method ?? restored?.method ?? '';
+  const initNotes = restored?.notes ?? '';
+  const initServings = String(prefill?.servings ?? restored?.servings ?? '');
+  const initTime = String(prefill?.timeToCookMinutes ?? restored?.timeToCookMinutes ?? '');
+  const initCost = String(prefill?.costPerServing ?? restored?.costPerPortion ?? '');
+  const initCalories = String(prefill?.caloriesPerServing ?? restored?.caloriesPerServing ?? '');
+  const initProtein = String(prefill?.proteinPerServing ?? restored?.proteinPerServing ?? '');
 
   container.innerHTML = `
     <section class="edit-form-shell">
@@ -50,7 +129,7 @@ export async function renderRecipeForm(
       </div>
       <form id="recipe-form" novalidate>
         <div class="ef-panel active" data-panel="overview">
-          <input id="rf-name" name="name" type="text" maxlength="200" value="${escapeAttr(prefill?.name ?? '')}" placeholder="Recipe name *" class="ef-title-input" required />
+          <input id="rf-name" name="name" type="text" maxlength="200" value="${escapeAttr(initName)}" placeholder="Recipe name *" class="ef-title-input" required />
 
           <div class="ef-row-list">
             <div class="ef-row" id="row-courses">
@@ -65,19 +144,19 @@ export async function renderRecipeForm(
             </div>
             <div class="ef-row">
               <span class="ef-row-label">Source</span>
-              <input id="rf-source" name="sourceLink" type="url" maxlength="2048" value="${escapeAttr(sourceLink ?? prefill?.sourceLink ?? '')}" placeholder="URL" class="ef-row-input" />
+              <input id="rf-source" name="sourceLink" type="url" maxlength="2048" value="${escapeAttr(initSource)}" placeholder="URL" class="ef-row-input" />
             </div>
             <div class="ef-row">
               <span class="ef-row-label">Servings</span>
-              <input id="rf-servings" name="servings" type="number" min="1" max="100" value="${prefill?.servings ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+              <input id="rf-servings" name="servings" type="number" min="1" max="100" value="${escapeAttr(initServings)}" placeholder="—" class="ef-row-input ef-row-short" />
             </div>
             <div class="ef-row">
               <span class="ef-row-label">Cook time</span>
-              <input id="rf-time" name="timeToCookMinutes" type="number" min="1" max="1440" value="${prefill?.timeToCookMinutes ?? ''}" placeholder="mins" class="ef-row-input ef-row-short" />
+              <input id="rf-time" name="timeToCookMinutes" type="number" min="1" max="1440" value="${escapeAttr(initTime)}" placeholder="mins" class="ef-row-input ef-row-short" />
             </div>
             <div class="ef-row">
               <span class="ef-row-label">Cost/portion</span>
-              <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="${prefill?.costPerServing ?? ''}" placeholder="£" class="ef-row-input ef-row-short" />
+              <input id="rf-cost" name="costPerPortion" type="number" min="0" max="9999.99" step="0.01" value="${escapeAttr(initCost)}" placeholder="£" class="ef-row-input ef-row-short" />
             </div>
           </div>
         </div>
@@ -87,11 +166,11 @@ export async function renderRecipeForm(
         </div>
 
         <div class="ef-panel" data-panel="directions">
-          <textarea id="rf-method" name="method" rows="16" maxlength="10000" placeholder="Write or paste the method here...">${escapeHtml(prefill?.method ?? '')}</textarea>
+          <textarea id="rf-method" name="method" rows="16" maxlength="10000" placeholder="Write or paste the method here...">${escapeHtml(initMethod)}</textarea>
         </div>
 
         <div class="ef-panel" data-panel="notes">
-          <textarea id="rf-notes" name="notes" rows="10" maxlength="5000" placeholder="Cook notes, tips, variations..."></textarea>
+          <textarea id="rf-notes" name="notes" rows="10" maxlength="5000" placeholder="Cook notes, tips, variations...">${escapeHtml(initNotes)}</textarea>
         </div>
 
         <div class="ef-panel" data-panel="nutrition">
@@ -99,11 +178,11 @@ export async function renderRecipeForm(
           <div class="ef-row-list">
             <div class="ef-row">
               <span class="ef-row-label">Calories</span>
-              <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="${prefill?.caloriesPerServing ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+              <input id="rf-calories" name="caloriesPerServing" type="number" min="0" step="1" value="${escapeAttr(initCalories)}" placeholder="—" class="ef-row-input ef-row-short" />
             </div>
             <div class="ef-row">
               <span class="ef-row-label">Protein (g)</span>
-              <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="${prefill?.proteinPerServing ?? ''}" placeholder="—" class="ef-row-input ef-row-short" />
+              <input id="rf-protein" name="proteinPerServing" type="number" min="0" step="0.1" value="${escapeAttr(initProtein)}" placeholder="—" class="ef-row-input ef-row-short" />
             </div>
           </div>
         </div>
@@ -128,6 +207,46 @@ export async function renderRecipeForm(
   // === Tab switching ===
   const tabs = container.querySelectorAll<HTMLButtonElement>('.ef-tab');
   const panels = container.querySelectorAll<HTMLElement>('.ef-panel');
+
+  // === Draft auto-save (new recipes only) ===
+  // Captures the current form state so an unexpected page reload (iOS Safari
+  // backgrounded-tab reload) does not lose the Owner's in-progress recipe.
+  const val = (sel: string) => container.querySelector<HTMLInputElement | HTMLTextAreaElement>(sel)?.value ?? '';
+  function persistDraft() {
+    if (!isNewRecipe) return;
+    saveDraft({
+      name: val('#rf-name'),
+      sourceLink: val('#rf-source'),
+      ingredientsText: val('#rf-ingredients'),
+      method: val('#rf-method'),
+      notes: val('#rf-notes'),
+      servings: val('#rf-servings'),
+      timeToCookMinutes: val('#rf-time'),
+      costPerPortion: val('#rf-cost'),
+      caloriesPerServing: val('#rf-calories'),
+      proteinPerServing: val('#rf-protein'),
+      courses: [...selectedCourses],
+      categories: [...selectedCategories],
+    });
+  }
+
+  if (isNewRecipe) {
+    const formEl = container.querySelector<HTMLFormElement>('#recipe-form')!;
+    // Debounce slightly so rapid typing doesn't hammer localStorage.
+    let saveTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleSave = () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(persistDraft, 300);
+    };
+    formEl.addEventListener('input', scheduleSave);
+    // Capture state when the tab is hidden (iOS fires this before discarding).
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') persistDraft();
+    });
+    // Persist immediately so freshly-imported (link/Claude) data is already
+    // saved before the Owner touches anything, surviving an early reload.
+    if (prefill) persistDraft();
+  }
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -181,6 +300,7 @@ export async function renderRecipeForm(
       [...selectedCourses].join(', ') || '—';
     container.querySelector<HTMLElement>('#categories-display')!.textContent =
       [...selectedCategories].join(', ') || '—';
+    persistDraft();
   }
 
   container.querySelector<HTMLElement>('#row-courses')!.addEventListener('click', () => openPicker('courses'));
@@ -208,7 +328,11 @@ export async function renderRecipeForm(
   });
 
   // === Close / Cancel ===
-  container.querySelector<HTMLButtonElement>('#ef-close')!.addEventListener('click', callbacks.onCancel);
+  container.querySelector<HTMLButtonElement>('#ef-close')!.addEventListener('click', () => {
+    // Explicit close discards the new-recipe draft so it doesn't resurface later.
+    if (isNewRecipe) clearDraft();
+    callbacks.onCancel();
+  });
 
   // === Save ===
   container.querySelector<HTMLButtonElement>('#ef-save')!.addEventListener('click', async () => {
@@ -264,6 +388,8 @@ export async function renderRecipeForm(
       return;
     }
 
+    // Saved successfully — the draft is no longer needed.
+    clearDraft();
     callbacks.onSaved();
   });
 }
