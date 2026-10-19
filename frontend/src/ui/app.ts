@@ -6,7 +6,7 @@ import { renderRecipeDetail } from './recipeDetail';
 import { renderShoppingListView } from './shoppingListView';
 import { renderPlannerView } from './plannerView';
 import { listRecipes, getRecipe, type RecipeRecord } from '../lib/recipeStore';
-import { deleteRecipe } from '../lib/recipeStore';
+import { deleteRecipe, setFavorite, persistRecipeOrder } from '../lib/recipeStore';
 import { addToMealPlan } from '../lib/mealPlanStore';
 import { getPhotoUrl, getPlaceholderEmoji } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
@@ -151,7 +151,18 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
 
   function showPlannerView() {
     setActiveNav('nav-planner');
-    renderPlannerView(main);
+    renderPlannerView(main, {
+      onOpenRecipe: async (id) => {
+        const recipe = await getRecipe(id);
+        if (recipe) {
+          renderRecipeDetail(main, recipe, {
+            onBack: () => showPlannerView(),
+            onDeleted: () => showPlannerView(),
+            onEdit: (r) => showEditForm(r),
+          });
+        }
+      },
+    });
   }
 
   function showSettingsView() {
@@ -241,6 +252,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           <input id="recipe-search" type="text" placeholder="Search recipes..." maxlength="100" />
         </div>
         <div class="sort-row">
+          <button id="filter-fav" type="button" class="sort-btn">★ Favourites</button>
           <button id="sort-protein" type="button" class="sort-btn">Protein/cal ↓</button>
           <button id="sort-stars" type="button" class="sort-btn">Rating ↓</button>
           <select id="filter-stars" class="sort-btn">
@@ -258,6 +270,7 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     let filteredRecipes = recipes;
     let sortByProtein = false;
     let sortByStars = false;
+    let showFavoritesOnly = false;
     const activeFilters = new Set<string>();
 
     function applyFilters() {
@@ -265,6 +278,11 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
       const minStars = (main.querySelector<HTMLSelectElement>('#filter-stars')!).value;
 
       filteredRecipes = recipes;
+
+      // Favourites filter
+      if (showFavoritesOnly) {
+        filteredRecipes = filteredRecipes.filter(r => r.is_favorite);
+      }
 
       // Category filter
       if (activeFilters.size > 0) {
@@ -324,6 +342,11 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
     });
 
     main.querySelector<HTMLInputElement>('#recipe-search')!.addEventListener('input', applyFilters);
+    main.querySelector<HTMLButtonElement>('#filter-fav')!.addEventListener('click', () => {
+      showFavoritesOnly = !showFavoritesOnly;
+      main.querySelector<HTMLButtonElement>('#filter-fav')!.classList.toggle('sort-active', showFavoritesOnly);
+      applyFilters();
+    });
     main.querySelector<HTMLButtonElement>('#sort-protein')!.addEventListener('click', () => {
       sortByProtein = !sortByProtein;
       sortByStars = false;
@@ -443,6 +466,36 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
             });
           }
         });
+
+        // Favourite toggle (stopPropagation so it doesn't open the recipe)
+        const favBtn = card.querySelector<HTMLButtonElement>('.card-fav');
+        favBtn?.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id = favBtn.dataset.favId!;
+          const nowFav = !favBtn.classList.contains('active');
+          favBtn.classList.toggle('active', nowFav);
+          favBtn.textContent = nowFav ? '★' : '☆';
+          // Keep the in-memory list in sync so the Favourites filter reflects it.
+          const rec = recipes.find(r => r.id === id);
+          if (rec) rec.is_favorite = nowFav;
+          const result = await setFavorite(id, nowFav);
+          if (!result.ok) {
+            // revert on failure
+            favBtn.classList.toggle('active', !nowFav);
+            favBtn.textContent = !nowFav ? '★' : '☆';
+            if (rec) rec.is_favorite = !nowFav;
+          }
+        });
+
+        // Drag-to-reorder, initiated only from the grip handle so it never
+        // conflicts with the card's horizontal swipe or tap.
+        const handle = card.querySelector<HTMLButtonElement>('.card-drag-handle');
+        handle?.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startReorder(wrapper, e);
+        });
       });
 
       // Lazy-load Pexels images for cards without uploaded photos
@@ -459,6 +512,70 @@ export function renderApp(container: HTMLElement, onSignOut: () => void): void {
           placeholder.replaceWith(img);
         }
       });
+    }
+
+    // === Drag-to-reorder ===
+    // Vertical drag of a card (started from its grip handle) reorders the list.
+    // Reordering only applies to the full, unfiltered/unsorted view so the
+    // persisted order stays meaningful; if a filter or sort is active we fall
+    // back gracefully by still letting the user drag the visible items.
+    function startReorder(wrapper: HTMLElement, startEvent: PointerEvent) {
+      const listEl = main.querySelector<HTMLElement>('#recipe-list');
+      if (!listEl) return;
+
+      const items = [...listEl.querySelectorAll<HTMLElement>('.swipe-container')];
+      const startY = startEvent.clientY;
+      const rect = wrapper.getBoundingClientRect();
+      const offsetY = startY - rect.top;
+
+      wrapper.classList.add('dragging');
+      wrapper.style.zIndex = '50';
+      document.body.style.userSelect = 'none';
+
+      const onMove = (ev: PointerEvent) => {
+        const y = ev.clientY;
+        wrapper.style.transform = `translateY(${y - startY}px)`;
+        wrapper.style.position = 'relative';
+
+        // Find the sibling we're hovering over and reorder in the DOM.
+        for (const other of items) {
+          if (other === wrapper) continue;
+          const r = other.getBoundingClientRect();
+          const mid = r.top + r.height / 2;
+          if (y - offsetY < mid && other.compareDocumentPosition(wrapper) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            listEl.insertBefore(wrapper, other);
+            wrapper.style.transform = 'translateY(0)';
+            break;
+          }
+          if (y - offsetY > mid && other.compareDocumentPosition(wrapper) & Node.DOCUMENT_POSITION_PRECEDING) {
+            listEl.insertBefore(wrapper, other.nextSibling);
+            wrapper.style.transform = 'translateY(0)';
+            break;
+          }
+        }
+      };
+
+      const onUp = async () => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        wrapper.classList.remove('dragging');
+        wrapper.style.transform = '';
+        wrapper.style.position = '';
+        wrapper.style.zIndex = '';
+        document.body.style.userSelect = '';
+
+        // Read the new DOM order and persist it.
+        const orderedIds = [...listEl.querySelectorAll<HTMLElement>('.recipe-card')]
+          .map(c => c.dataset.id)
+          .filter((id): id is string => Boolean(id));
+
+        // Reorder the in-memory list to match so later re-renders are stable.
+        recipes.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+        await persistRecipeOrder(orderedIds);
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     }
 
     attachCardListeners(main.querySelector<HTMLElement>('#recipe-list')!);
@@ -566,11 +683,16 @@ function renderRecipeCard(recipe: RecipeRecord): string {
 
   const nutritionHtml = buildNutritionBadge(recipe);
 
+  const favClass = recipe.is_favorite ? 'card-fav active' : 'card-fav';
+  const favIcon = recipe.is_favorite ? '★' : '☆';
+
   return `
     <div class="swipe-container">
       <div class="swipe-action swipe-action-left">🗑 Delete</div>
       <div class="swipe-action swipe-action-right">📅 Plan</div>
       <article class="recipe-card" data-id="${recipe.id}" role="button" tabindex="0">
+        <button class="${favClass}" data-fav-id="${recipe.id}" type="button" aria-label="Toggle favourite">${favIcon}</button>
+        <button class="card-drag-handle" type="button" aria-label="Drag to reorder">⠿</button>
         ${photoHtml}
         <div class="card-body">
           <h3>${escapeHtml(recipe.name)}</h3>

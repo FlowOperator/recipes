@@ -1,5 +1,5 @@
 import type { RecipeRecord } from '../lib/recipeStore';
-import { updateRecipe, deleteRecipe, createRecipe } from '../lib/recipeStore';
+import { updateRecipe, deleteRecipe, createRecipe, setFavorite } from '../lib/recipeStore';
 import { getPhotoUrl, uploadRecipePhoto } from '../lib/photoStorage';
 import { getPexelsImageUrl } from '../lib/pexelsImages';
 import { renderAddToShoppingList } from './addToShoppingList';
@@ -49,7 +49,10 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
       <div class="rd-content">
         <button id="detail-back" type="button" class="rd-back-btn">← Back</button>
 
-        <h1 class="rd-title">${esc(recipe.name)}</h1>
+        <div class="rd-title-row">
+          <h1 class="rd-title">${esc(recipe.name)}</h1>
+          <button id="detail-fav" type="button" class="rd-fav ${recipe.is_favorite ? 'active' : ''}" aria-label="Toggle favourite">${recipe.is_favorite ? '★' : '☆'}</button>
+        </div>
 
         <div class="rd-meta">
           ${recipe.time_to_cook_minutes ? `<span class="rd-meta-item">⏱ ${recipe.time_to_cook_minutes} min</span>` : ''}
@@ -131,6 +134,21 @@ export function renderRecipeDetail(container: HTMLElement, recipe: RecipeRecord,
   container.querySelector<HTMLButtonElement>('#detail-back')!.addEventListener('click', callbacks.onBack);
 
   container.querySelector<HTMLButtonElement>('#detail-edit')!.addEventListener('click', () => callbacks.onEdit(recipe));
+
+  // Favourite toggle
+  container.querySelector<HTMLButtonElement>('#detail-fav')!.addEventListener('click', async () => {
+    const btn = container.querySelector<HTMLButtonElement>('#detail-fav')!;
+    const nowFav = !recipe.is_favorite;
+    btn.classList.toggle('active', nowFav);
+    btn.textContent = nowFav ? '★' : '☆';
+    const result = await setFavorite(recipe.id, nowFav);
+    if (result.ok) {
+      recipe.is_favorite = nowFav;
+    } else {
+      btn.classList.toggle('active', !nowFav);
+      btn.textContent = !nowFav ? '★' : '☆';
+    }
+  });
 
   container.querySelector<HTMLButtonElement>('#detail-duplicate')!.addEventListener('click', async () => {
     const result = await createRecipe({

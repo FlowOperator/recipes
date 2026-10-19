@@ -26,6 +26,8 @@ export interface RecipeRecord {
   dietary_labels: string[];
   key_ingredient_labels: string[];
   filter_categories: string[];
+  is_favorite: boolean;
+  sort_order: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,8 @@ export async function createRecipe(input: CreateRecipeInput): Promise<{ ok: bool
     cook_notes: '',
     dietary_labels: [],
     key_ingredient_labels: [],
+    // New recipes appear at the top of the manual order.
+    sort_order: 0,
   };
 
   const { data, error } = await supabase.from('recipes').insert(row).select().single();
@@ -98,14 +102,38 @@ export async function getAllTags(): Promise<string[]> {
 
 /**
  * Fetches all recipes for the current Owner (Requirement 12.1).
+ * Ordered by the Owner's manual sort_order (drag-and-drop), falling back to
+ * newest-first for any records without an explicit order.
  */
 export async function listRecipes(): Promise<RecipeRecord[]> {
   const { data, error } = await supabase
     .from('recipes')
     .select('*')
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false });
   if (error) return [];
   return (data ?? []) as RecipeRecord[];
+}
+
+/**
+ * Toggles the favourite flag on a recipe and returns the new value.
+ */
+export async function setFavorite(id: string, isFavorite: boolean): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('recipes').update({ is_favorite: isFavorite }).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Persists a new manual ordering. `orderedIds` is the full list of recipe ids
+ * in the desired display order; each is assigned an incrementing sort_order.
+ */
+export async function persistRecipeOrder(orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from('recipes').update({ sort_order: index + 1 }).eq('id', id)
+    )
+  );
 }
 
 /**

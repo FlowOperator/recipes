@@ -28,6 +28,8 @@ const makeRecipe = (overrides: Partial<RecipeRecord> = {}): RecipeRecord => ({
   dietary_labels: [],
   key_ingredient_labels: [],
   filter_categories: ['dinner'],
+  is_favorite: false,
+  sort_order: null,
   created_at: '',
   updated_at: '',
   ...overrides,
