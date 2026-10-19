@@ -33,7 +33,14 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { margin: 0; }
+body {
+  margin: 0;
+  /* Disable the double-tap-to-zoom gesture so quick taps register as taps,
+     not zoom attempts. Combined with user-scalable=no in the viewport meta,
+     this keeps the installed PWA at a fixed, app-like scale. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
 
 /*
  * iOS Safari zooms the page in whenever a focused form control has a

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recipe-site-v4';
+const CACHE_NAME = 'recipe-site-v5';
 
 // On install: don't skipWaiting — let the update apply on next navigation
 self.addEventListener('install', () => {

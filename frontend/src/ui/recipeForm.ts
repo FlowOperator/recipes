@@ -208,46 +208,6 @@ export async function renderRecipeForm(
   const tabs = container.querySelectorAll<HTMLButtonElement>('.ef-tab');
   const panels = container.querySelectorAll<HTMLElement>('.ef-panel');
 
-  // === Draft auto-save (new recipes only) ===
-  // Captures the current form state so an unexpected page reload (iOS Safari
-  // backgrounded-tab reload) does not lose the Owner's in-progress recipe.
-  const val = (sel: string) => container.querySelector<HTMLInputElement | HTMLTextAreaElement>(sel)?.value ?? '';
-  function persistDraft() {
-    if (!isNewRecipe) return;
-    saveDraft({
-      name: val('#rf-name'),
-      sourceLink: val('#rf-source'),
-      ingredientsText: val('#rf-ingredients'),
-      method: val('#rf-method'),
-      notes: val('#rf-notes'),
-      servings: val('#rf-servings'),
-      timeToCookMinutes: val('#rf-time'),
-      costPerPortion: val('#rf-cost'),
-      caloriesPerServing: val('#rf-calories'),
-      proteinPerServing: val('#rf-protein'),
-      courses: [...selectedCourses],
-      categories: [...selectedCategories],
-    });
-  }
-
-  if (isNewRecipe) {
-    const formEl = container.querySelector<HTMLFormElement>('#recipe-form')!;
-    // Debounce slightly so rapid typing doesn't hammer localStorage.
-    let saveTimer: ReturnType<typeof setTimeout> | undefined;
-    const scheduleSave = () => {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(persistDraft, 300);
-    };
-    formEl.addEventListener('input', scheduleSave);
-    // Capture state when the tab is hidden (iOS fires this before discarding).
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') persistDraft();
-    });
-    // Persist immediately so freshly-imported (link/Claude) data is already
-    // saved before the Owner touches anything, surviving an early reload.
-    if (prefill) persistDraft();
-  }
-
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.tab!;
@@ -269,6 +229,46 @@ export async function renderRecipeForm(
   const allCategoryOptions = [...new Set([...VALID_CATEGORIES, ...FOOD_CATEGORIES, ...customFoodTagsGlobal])];
 
   let activePicker: 'courses' | 'categories' | null = null;
+
+  // === Draft auto-save (new recipes only) ===
+  // Captures the current form state so an unexpected page reload (iOS Safari
+  // backgrounded-tab reload) does not lose the Owner's in-progress recipe.
+  // Declared here, after selectedCourses/selectedCategories exist, so the
+  // persist-on-import call below never hits a temporal-dead-zone error.
+  const fieldVal = (sel: string) =>
+    container.querySelector<HTMLInputElement | HTMLTextAreaElement>(sel)?.value ?? '';
+  function persistDraft() {
+    if (!isNewRecipe) return;
+    saveDraft({
+      name: fieldVal('#rf-name'),
+      sourceLink: fieldVal('#rf-source'),
+      ingredientsText: fieldVal('#rf-ingredients'),
+      method: fieldVal('#rf-method'),
+      notes: fieldVal('#rf-notes'),
+      servings: fieldVal('#rf-servings'),
+      timeToCookMinutes: fieldVal('#rf-time'),
+      costPerPortion: fieldVal('#rf-cost'),
+      caloriesPerServing: fieldVal('#rf-calories'),
+      proteinPerServing: fieldVal('#rf-protein'),
+      courses: [...selectedCourses],
+      categories: [...selectedCategories],
+    });
+  }
+
+  if (isNewRecipe) {
+    const formEl = container.querySelector<HTMLFormElement>('#recipe-form')!;
+    let saveTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleSave = () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(persistDraft, 300);
+    };
+    formEl.addEventListener('input', scheduleSave);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') persistDraft();
+    });
+    // Persist freshly-imported (link/Claude) data immediately.
+    if (prefill) persistDraft();
+  }
 
   function openPicker(type: 'courses' | 'categories') {
     activePicker = type;
