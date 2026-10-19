@@ -54,14 +54,24 @@ export function addIngredientsToShoppingList(
     // Check if already in list
     const existing = list.find(item => item.name.trim().toLowerCase() === normalizedName);
 
-    if (existing) {
-      // Merge: add source recipe if not already listed
+    // Can we cleanly sum into an existing line? Only when both have a quantity
+    // and the units match. Otherwise keep this as a separate line so we never
+    // silently drop a quantity (e.g. "200 g flour" + "1 cup flour").
+    const canSum =
+      existing != null &&
+      ing.quantity != null &&
+      existing.quantity != null &&
+      existing.unit === ing.unit;
+
+    if (canSum) {
+      existing!.quantity! += ing.quantity!;
+      if (!existing!.sourceRecipes.includes(recipeName)) {
+        existing!.sourceRecipes.push(recipeName);
+      }
+    } else if (existing && ing.quantity == null && existing.quantity == null) {
+      // Both unquantified ("to taste") duplicates — just merge the source.
       if (!existing.sourceRecipes.includes(recipeName)) {
         existing.sourceRecipes.push(recipeName);
-      }
-      // Sum quantities if same unit
-      if (ing.quantity != null && existing.quantity != null && existing.unit === ing.unit) {
-        existing.quantity += ing.quantity;
       }
     } else {
       list.push({

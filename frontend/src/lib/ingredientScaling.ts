@@ -1,38 +1,48 @@
 import type { RecipeIngredient } from './recipeTypes';
 
 /**
- * Ingredients that should never be scaled — they're "to taste" or fixed regardless
- * of serving size. Matched case-insensitively against the ingredient name.
+ * Phrases that signal an ingredient is "to taste" / seasoning-style and should
+ * not be scaled regardless of servings. These are matched as whole phrases so
+ * that a genuinely-measured ingredient (e.g. "500 ml water", "2 tbsp oil") still
+ * scales, while vague seasoning lines ("salt to taste", "a pinch of pepper") do not.
  */
-const UNSCALABLE_KEYWORDS = [
-  'salt', 'pepper', 'seasoning', 'to taste', 'as needed',
-  'oil for frying', 'cooking spray', 'water', 'ice',
-  'pinch', 'drizzle', 'splash', 'garnish',
+const TO_TASTE_PHRASES = [
+  'to taste', 'as needed', 'for frying', 'for greasing', 'for garnish',
+  'for dusting', 'for serving', 'for drizzling',
 ];
 
 /**
- * Returns true if an ingredient should NOT be scaled (it's "to taste" or a
- * fixed amount regardless of servings).
+ * Units that are inherently non-numeric "to taste" measures and should not scale.
+ */
+const TO_TASTE_UNITS = ['pinch', 'pinches', 'drizzle', 'splash', 'dash', 'to taste'];
+
+/**
+ * Returns true if an ingredient should NOT be scaled.
+ *
+ * The rule, in order:
+ *  1. No quantity at all → already "to taste", leave as-is.
+ *  2. Unit is an inherently non-numeric measure (pinch, splash...) → leave as-is.
+ *  3. Name/unit contains a "to taste" phrase (e.g. "oil for frying") → leave as-is.
+ *
+ * Note: a plain quantified ingredient like "500 ml water" or "2 tbsp oil" IS
+ * scaled — only vague seasoning-style lines are skipped.
  */
 function isUnscalable(ingredient: RecipeIngredient): boolean {
-  // No quantity means it's already "to taste" style
+  // No quantity means it's already "to taste" style.
   if (ingredient.quantity == null) return true;
 
   const nameLower = ingredient.name.toLowerCase();
   const unitLower = (ingredient.unit ?? '').toLowerCase();
 
-  // Check if name or unit contains unscalable keywords
-  for (const keyword of UNSCALABLE_KEYWORDS) {
-    if (nameLower.includes(keyword) || unitLower.includes(keyword)) {
+  // Inherently non-numeric units.
+  if (TO_TASTE_UNITS.includes(unitLower)) return true;
+
+  // "to taste" style phrases in the name or unit.
+  for (const phrase of TO_TASTE_PHRASES) {
+    if (nameLower.includes(phrase) || unitLower.includes(phrase)) {
       return true;
     }
   }
-
-  // "salt and pepper" as a combined ingredient
-  if (nameLower.includes('salt') && nameLower.includes('pepper')) return true;
-
-  // Unit-based detection: "pinch", "to taste", etc.
-  if (unitLower === 'pinch' || unitLower === 'pinches') return true;
 
   return false;
 }

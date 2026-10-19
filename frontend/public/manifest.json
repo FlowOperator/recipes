@@ -1,12 +1,12 @@
 {
-  "name": "Recipe Site",
-  "short_name": "Recipes",
+  "name": "Nick's Picks",
+  "short_name": "Nick's Picks",
   "description": "Personal recipe collection",
   "start_url": "/recipes/",
   "scope": "/recipes/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#aa3bff",
+  "theme_color": "#c0613a",
   "icons": [
     {
       "src": "/recipes/favicon.svg",

@@ -28,19 +28,23 @@ export function mergeIngredients(recipeIngredients: RecipeIngredient[][]): Shopp
 
   const items: ShoppingListItem[] = [];
   for (const [key, entries] of groups) {
-    const displayName = entries.length > 0 ? key : key;
-    const allSameUnit = entries.every((e) => e.unit === entries[0].unit) && entries.every((e) => e.quantity != null);
+    // We can cleanly sum only when every entry shares the same unit AND every
+    // entry has a quantity. Otherwise we keep each entry's quantity/unit visible
+    // in `quantities` rather than silently collapsing them to an unquantified line.
+    const canSum =
+      entries.every((e) => e.quantity != null) &&
+      entries.every((e) => e.unit === entries[0].unit);
 
-    if (allSameUnit && entries[0].quantity != null) {
+    if (canSum) {
       items.push({
-        name: displayName,
+        name: key,
         quantity: entries.reduce((sum, e) => sum + (e.quantity ?? 0), 0),
         unit: entries[0].unit,
         source: 'recipe',
       });
     } else {
       items.push({
-        name: displayName,
+        name: key,
         quantity: null,
         unit: null,
         source: 'recipe',
